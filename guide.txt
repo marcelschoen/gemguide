@@ -1,5 +1,7 @@
 = GEM Guide for AHCC
 
+== Introduction
+
 This document is a guide to writing GEM applications in C using 
 AHCC.  I will walk through the implementation of two sample GEM 
 applications.  The first will be described in full detail, and 
@@ -44,6 +46,11 @@ lists of constants and function definitions:
 
 * Katherine Peel's "The Concise ATARI ST 68000 Programmer's Reference Guide"
 * http://toshyp.atari.org (also available as a hyp file, to download).
+
+Alternative resources include:
+
+* Tim Oren's "Professional GEM" http://www.atari-wiki.com/index.php/Professional_GEM
+* The Atari Compendium http://dev-docs.atariforge.org/files/The_Atari_Compendium.pdf
 
 This guide has been typed on a http://firebee.org[Firebee] using QED.
 The guide was previewed using http://peterlane.info/neso.html[Neso]
@@ -165,6 +172,7 @@ I place this code in +main+, with a call out to a function to run our own
 application (for a complete listing, including header files and variable definitions,
 see the source code which accompanies this guide):
 
+[source,c]
 ----
 void main (int argc, char ** argv) {
 	appl_init ();			// <1>
@@ -190,6 +198,7 @@ to open a work station, as shown below.  An important part of this is to
 create a reference to the screen, through the call to +graf_handle+; this 
 reference is stored in the variable +app_handle+.
 
+[source,c]
 ----
 void open_vwork (void) {
 	int i;
@@ -217,6 +226,7 @@ to date.  There are, therefore, many pieces of information which a window must
 be aware of.  For this reason, I use a +struct+ to store all data relevant to 
 a single window.  My basic +win_data+ is as follows:
 
+[source,c]
 ----
 struct win_data {
 	int handle;	/* identifying handle of the window    <1> */
@@ -235,6 +245,7 @@ Creating a window requires setting up an instance of +win_data+ with the
 relevant data, creating a window, and then showing it.  The following code
 appears in "windows.c", in the +start_program+ function.
 
+[source,c]
 ----
 struct win_data wd;
 int fullx, fully, fullw, fullh;
@@ -267,16 +278,16 @@ is used to refer to the desktop.
 The identifier refers to different parts of the window.  Some of the values 
 we will use include:
 
-* WF\_NAME : the text in the title of the window
-* WF\_INFO : the text in the information line of the window
-* WF\_WORKXYWH : the current working area of the window, on which you can draw
-* WF\_CURRXYWH : the current size of the window, including its widgets
-* WF\_PREVXYWH : the previous size of the window, including its widgets
-* WF\_FULLXYWH : the maximum size of the window, including its widgets
-* WF\_HSLIDE : the position of the horizontal slider
-* WF\_VSLIDE : the position of the vertical slider
-* WF\_HSLSIZE : the size of the horizontal slider
-* WF\_VSLSIZE : the size of the vertical slider
+* WF_NAME : the text in the title of the window
+* WF_INFO : the text in the information line of the window
+* WF_WORKXYWH : the current working area of the window, on which you can draw
+* WF_CURRXYWH : the current size of the window, including its widgets
+* WF_PREVXYWH : the previous size of the window, including its widgets
+* WF_FULLXYWH : the maximum size of the window, including its widgets
+* WF_HSLIDE : the position of the horizontal slider
+* WF_VSLIDE : the position of the vertical slider
+* WF_HSLSIZE : the size of the horizontal slider
+* WF_VSLSIZE : the size of the vertical slider
 
 Notice in +wind_create+ we include the flags +NAME|CLOSER+.  These tell our window 
 to include space for a title, and for a close box.  We set the title through 
@@ -299,6 +310,7 @@ parts, and to use them we add them to the list of flags.  Some common flags are:
 
 The function +start_program+ continues as follows:
 
+[source,c]
 ----
 draw_example (app_handle, &wd);			// <1>
 
@@ -320,6 +332,7 @@ wind_delete (wd.handle);			// <4>
 A function +draw_example+ is used to draw the window contents on the screen.
 Our example simply displays the given text in the window.
 
+[source,c]
 ----
 void draw_example (int app_handle, struct win_data * wd) {
 
@@ -348,6 +361,7 @@ example, to keep things simple, we will only need to respond to window
 events, so we use this call.  +evnt_multi+ is explained in a later 
 section, when we discuss the second example, Sokoban.
 
+[source,c]
 ----
 void event_loop (struct win_data * wd) {
 	int msg_buf[8];				// <1>
@@ -408,6 +422,7 @@ area will exclude the window boundaries, any scroll bars, etc.
 A call to clear the window and we can then call out to our application's 
 drawing code.  Finally the clipping is turned off, and the mouse reshown.
 
+[source,c]
 ----
 /* Draw interior of window, within given clipping rectangle */
 void draw_interior (struct win_data * wd, GRECT clip) {
@@ -448,8 +463,28 @@ However, we cannot blindly fill that area with the contents of our
 window, because there may be _other_ windows partially obscuring this 
 area.  Hence, we must take a look at every other window on the system, 
 find those which are obscuring our window, and make sure we avoid drawing 
-over them.  This process is called "walking the rectangle list", and is 
-controlled by two get operations:
+over them.  
+
+Consider the following two images.  In the first image, we have three windows,
+all overlapping each other.  We now close the top window: how should the back 
+window, the one showing the list "Classic 1" etc, be updated?
+
+image::images/redraw-1.png[width=300]
+
+The second image shows the scene with the top window closed.  The highlighted
+rectangle indicates the area that needs to be redrawn, and only this area.  If 
+we redraw any other parts of the bottom window, we will overwrite the contents 
+of the window now on top.
+
+image::images/redraw-2.png[width=300]
+
+The process to ensure we only update the required areas is called "walking 
+the rectangle list".  Our application receives the total area that was 
+revealed by closing the top window, and which now needs updating.  Our 
+application now compares that area to the other windows that are obscuring it,
+before locating the highlighted rectangle to draw.
+
+Walking the rectangle list is controlled by two get operations:
 
 . +wind_get (wd->handle, WF_FIRSTXYWH, ...)+ retrieves the first rectangle
   relevant to our window, storing the x, y, w, h values in the remaining 
@@ -463,6 +498,7 @@ they are both zero, that signals the end of the rectangle list.
 All we check is whether the rectangles in the list intersect our rectangle 
 to update and, if so, we draw the intersected area.
 
+[source,c]
 ----
 /* Called when application asked to redraw parts of its display.
    Walks the rectangle list, redrawing the relevant part of the window.
@@ -507,6 +543,7 @@ For a redraw event, we receive the following information in +msg_buf+:
 * msg_buf[6] = width of area to redraw, in pixels.
 * msg_buf[7] = height of area to redraw, in pixels.
 
+[source,c]
 ----
 do {
 	evnt_mesag (msg_buf);
@@ -573,6 +610,7 @@ do is use +wind_set+ to bring our window to the top.
 
 In our event loop, we add the following code:
 
+[source,c]
 ----
 case WM_TOPPED:
 	wind_set (msg_buf[3], WF_TOP, 0, 0);
@@ -597,6 +635,7 @@ new location.  The new location is provided in +msg_buf+, positions 4-7.
 
 In our event loop, we add the following code:
 
+[source,c]
 ----
 case WM_MOVED:
 	wind_set (msg_buf[3], WF_CURRXYWH, msg_buf[4],
@@ -617,6 +656,7 @@ coordinates of where we want the contents drawn to our draw function.  The
 provided x,y coordinates then represent the origin we need to use for our 
 drawing code.  We pass these coordinates to our drawing code from +draw_interior+.
 
+[source,c]
 ----
 void draw_example (int app_handle, struct win_data * wd, int x, int y, int w, int h) {
 
@@ -674,6 +714,7 @@ traditional to display a little animation of the window growing or shrinking
 to its new size, hence the calls to +graf_shrinkbox+.  (This may not be visible
 on a fast computer: I can't detect them on the Firebee!)
 
+[source,c]
 ----
 void do_fulled (struct win_data * wd) {
 	if (is_full_window (wd)) { /* it's full, so shrink to previous size */
@@ -704,6 +745,7 @@ void do_fulled (struct win_data * wd) {
 Notice the function +is_full_window+.  This function merely checks the current 
 and full dimensions of the window, to see if they are the same.  The function is:
 
+[source,c]
 ----
 bool is_full_window (struct win_data * wd) {
 	int curx, cury, curw, curh;
@@ -749,6 +791,7 @@ do is set the current dimensions of the window to the new size.  We
 add a simple check that the new dimensions are not _too_ small, so the 
 user cannot reduce the window beyond a given minimum.
 
+[source,c]
 ----
 void do_sized (struct win_data * wd, int * msg_buf) {
 	if (msg_buf[6] < MIN_WIDTH) msg_buf[6] = MIN_WIDTH;	// <1>
@@ -765,6 +808,7 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 
 To respond to size events, include +WM_SIZED+ in the event loop, as follows:
 
+[source,c]
 ----
 case WM_SIZED:
 	do_sized (wd, msg_buf); // <1>
@@ -807,7 +851,7 @@ screen.
 
 We shall begin by adding sliders to our program, getting the sliders to show 
 the right size and position, then respond to all the events, before finally 
-modifying our +draw\_example+ function to display correctly.
+modifying our +draw_example+ function to display correctly.
 
 === Showing the Sliders
 
@@ -821,8 +865,8 @@ NAME|CLOSER|FULLER|MOVER|SIZER|UPARROW|DNARROW|VSLIDE|LFARROW|RTARROW|HSLIDE
 
 The AES makes some space for the sliders, as with the other window widgets, and 
 leaves the remaining room for us to draw in.  This is why, when doing operations 
-such as FULL, we use +WF\_CURRXYWH+ to get or set the current window dimensions, 
-but, for drawing _within_ the window, we use +WF\_WORKXYWH+ to get the current 
+such as FULL, we use +WF_CURRXYWH+ to get or set the current window dimensions, 
+but, for drawing _within_ the window, we use +WF_WORKXYWH+ to get the current 
 _working_ area of the window.
 
 === Showing the Sliders
@@ -857,6 +901,7 @@ We could include an info line for our poem display, to hold the number of lines.
 Referring to version 5, we would include +INFO+ in the parts for the 
 window.  Then, in line NN during the construction of the window, we can write:
 
+[source,c]
 ----
 	wind_set (wd->handle, WF_INFO, "57 lines");
 ----
