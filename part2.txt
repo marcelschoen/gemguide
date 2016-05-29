@@ -1,0 +1,82 @@
+AES has also changed in some respects, particularly if you are 
+running MINT, with new messages and possibilities not available on the 
+Atari ST.  I shall discuss some of these in a later section.
+
+  I will not say much 
+about creating an RSC file - you can refer to your own program's 
+documentation for that.  (I use ResourceMaster 3.65.)
+
+== in Overview
+
+Menus will be dealt with in brief in their own section.  They are the simplest 
+aspect of GEM, and easily included into our programs.  Menus are defined in the 
+program's RSC file, and all we need to do is respond to a message indicating they 
+have been selected.
+
+Dialog boxes will be dealt with, also in brief, in their own section, although 
+they can be very complex.  The main issue with dialog boxes is displaying them, 
+and then retrieving any data the user has input. Dialog boxes are the only 
+place you find widgets such as buttons, text fields and labels.  Again, dialog 
+boxes are defined in the program's RSC file.
+
+== TOS 4.0
+
+TOS 4.0 and later AES's provide additional features and functionality.  I don't 
+propose to cover many of these advanced features here, but the following are 
+important for interacting nicely with MINT, and/or just cool to use.
+
+=== Extra Events
+
+shading, ontop etc.
+
+=== Toolbars
+
+using some widgets in a toolbar
+
+=== Internal Menus
+
+menus within a window
+
+== Keyboard / Mouse Events
+
+keyboard mouse events
+
+== Menus
+
+something about menus
+
+== Dialogs
+
+something about dialogs
+
+=== Form Alerts
+
+built in dialogs
+
+=== Through RSC
+
+boxes you build yourself
+
+== Accessories
+
+something about accessories
+
+== Images
+
+if I can work out how to use them
+
+== Scrapboard
+
+something about scrapboard
+
+== Beyond this Guide ...
+
+There are many topics beyond the scope of this guide.  In particular, there 
+are special hooks/events for interacting with other common software, such as 
+your own AES replacement (MyAES or XaAES), or desktop replacement (such as 
+TeraDesk or Thing).  
+
+More generally, there are systems such as:
+
+* AV Protocols
+* LGD (a shared library system for Atari software)

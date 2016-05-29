@@ -1,0 +1,913 @@
+= GEM Guide for AHCC
+
+This document is a guide to writing GEM applications in C using 
+AHCC.  I will walk through the implementation of two sample GEM 
+applications.  The first will be described in full detail, and 
+covers the simple display of a single, scrollable window containing 
+text.  The second will be covered in less detail, looking only at 
+the extensions required to write a multi-window GEM application.  
+Currently, I look only at the window handling code: other aspects of 
+GEM programming will be covered in a later update.
+
+There are other guides out there.  I learnt much of the following 
+using CManShip, written by Clayton Walnum, and available from 
+AtariForge:
+
+* CManShip HYP http://dev-docs.atariforge.org/files/cmanship.hyp
+* CManShip disk http://dev-docs.atariforge.org/files/cmanship.zip
+
+However, the examples in CManShip require several changes to compile 
+with AHCC (my updated files for AHCC are at 
+https://github.com/petercrlane/cmanship).  In particular:
+
+* C89 syntax (especially function signatures)
+* changes to headers and library calls for compatibility
+
+After working through CManShip, I tried writing a few different 
+programs, and, partly through trial and error, and partly with the 
+help of contributors at http://atari-forum.com, I feel able to put 
+together some simple GEM programs.  This document is, in part, my 
+attempt to document what I have learnt from this process.  Also, it 
+is an attempt to simplify and unify the techniques I am using.  
+However, this document is, in many ways, a statement of the limits 
+of my own knowledge, so take anything I write with a healthy degree 
+of skepticism, and let me know of any errors and improvements.
+
+I will assume you already know the C programming language (in particular, 
+C89), and also that you know what a GEM program is.  However, I shall 
+try to cover what you need to write in C to get a GEM program working, 
+and interacting with the operating system.
+
+This guide is not a complete reference to GEM programming through 
+AES / VDI. Apart from CManShip, I use the following references for 
+lists of constants and function definitions:
+
+* Katherine Peel's "The Concise ATARI ST 68000 Programmer's Reference Guide"
+* http://toshyp.atari.org (also available as a hyp file, to download).
+
+This guide has been typed on a http://firebee.org[Firebee] using QED.
+The guide was previewed using http://peterlane.info/neso.html[Neso]
+and NetSurf, and finally converted to pdf with asciidoc on a computer 
+running Ubuntu.  The examples were tested using version 5.3 of the 
+http://members.chello.nl/h.robbers/[AHCC C compiler]
+on a Firebee and, where appropriate, an Hatari-emulated Atari ST.
+
+Source code for the guide, and its first example, is available at:
+https://github.com/petercrlane/gemguide
+
+== AHCC Setup and Project Files
+
+We will be using the include libraries for AHCC.  Unfortunately, as at 
+version 5.3, some of the constants we require are not in "include/aes.h".
+You need to copy the values from "sinclude/aes.h".  These missing constants 
+include:
+
+----
+WM_SHADED
+WM_UNSHADED
+FL_3Dxxxx
+----
+
+If you get "missing constant" messages from AHCC, first see if they are missing 
+from "aes.h".
+
+=== Project Files
+
+Structure of a project file:
+
+----
+; some comment
+PROGRAM.PRG       ; <1>
+.C [-7]           ; <2>
+=                 ; <3>
+ahcstart.o        ; <4>
+
+program.c         ; <5>
+
+ahccstdi.lib      ; <6>
+ahccgem.lib
+gemf.lib
+----
+<1> Name of output program to compile.
+<2> Optional set of parameters for the compilation.  
+<3> Separator between output definition and input files.
+<4> The standard startup code, for the linker.
+<5> Your program's .c files are listed.
+<6> Usually three libraries: these vary depending on the platform you target.
+
+The usual things to change in the above project are:
+
+. line (1) gives the name of your program.
+. line (2), the target platform.  -7 means the Firebee / Coldfire.  You can simply 
+  leave this line out when compiling for the Atari ST / 68000.
+. line (5), expand this with all the .c files in your project.
+. line (6), change this and the subsequence lines for different Atari targets.
+  e.g. for the Firebee with floating point, use ahccstdf.lib and ahccgemf.lib
+  The libs shown are suitable for targeting the Atari ST / 68000.
+
+
+== Overview of a GEM Program
+
+If you are familiar with GUI programming on a more modern computer, kindly 
+forget everything you know.  Programming in GEM is primitive.  With a modern 
+toolkit, you have many kinds of widgets, from buttons and spinboxes, to 
+complete text editors supporting copy and paste and scrollable display areas. 
+Widgets can be combined with layout managers into complex arrangements.  
+Multi-threading can be used to keep the display refreshed while your program 
+is busy computing some results. 
+
+None of this is available in GEM.
+
+In GEM there are, essentially, three elements: menus, dialog boxes (which can
+contain several "widgets") and windows.  The part that will take most of our time 
+is learning to handle the window: a window is the part of the screen in which 
+your application has free reign.  You have complete control over the contents of 
+the window.  You decide what gets drawn there, how what you draw there responds 
+to the user moving the sliders around, and you must also ensure what you draw in 
+the window remains there (and only there) as your window interacts with the 
+windows of other applications (in MINT) or desk accessories.
+
+The following sections will progressively build up a GEM program to illustrate 
+window handling, gradually ending up with a program that responds to all the 
+expected window events, has scroll bars, and co-exists happily with other windows, 
+preserving its own contents, and not disturbing the neighbours.  Each successive 
+version is provided complete in the source code for this guide, and can be 
+compiled using AHCC.
+
+(Although there is a lot of code required for managing GEM, with a little 
+discipline it is possible to preserve most of this code between projects.  The 
+examples here follow my own practice in managing this.  I shall try to make 
+clear which parts of the examples are GEM requirements, and which are my own 
+suggestions.)
+
+
+== Getting Started: Opening a Window
+
+I find it convenient to separate the initial stage into three sets of 
+source code:
+
+. main.c contains the +main+ function, and handles all the setup code before
+  calling your program.
+. windows.c contains all the standard GEM stuff, and functions to respond to 
+  GEM events.
+. eg_draw.c contains the specific drawing code for this application.
+
+The header file "windows.h" is also important.  Here we define some variables 
+which AES requires, and also our own window data structure (see below).
+
+=== Starting a GEM Application
+
+We must begin and end our GEM application with some startup and tearup code.
+These register our application with the operating system, and provide a unique 
+reference to identify our application.
+
+I place this code in +main+, with a call out to a function to run our own 
+application (for a complete listing, including header files and variable definitions,
+see the source code which accompanies this guide):
+
+----
+void main (int argc, char ** argv) {
+	appl_init ();			// <1>
+	open_vwork ();			// <2>
+	start_program ();		// <3>
+	rsrc_free ();			// <4>
+	v_clsvwk (app_handle);		// <5>
+	appl_exit ();			// <6>
+}
+----
+<1> This is a built-in AES function, and initialises our application.  It 
+    returns a unique reference for our application, but we won't need it 
+    just yet.
+<2> This function we must provide, and is used to create and open a work
+    space for our program, and store the application handle.
+<3> This function we provide, and is where our program runs.
+<4> After our program has finished, and resources are freed.
+<5> Using the application handle from <2>, the work space is closed.
+<6> And finally our application exits.
+
+Functions (2) and (3) must be provided by ourselves. (2) is a standard process 
+to open a work station, as shown below.  An important part of this is to 
+create a reference to the screen, through the call to +graf_handle+; this 
+reference is stored in the variable +app_handle+.
+
+----
+void open_vwork (void) {
+	int i;
+	int dum;
+
+	app_handle = graf_handle (&dum, &dum, &dum, &dum);	// <1>
+	for (i = 0; i < 10; work_in[i++] = 1);			// <2>
+	work_in[10] = 2;
+	v_opnvwk (work_in, &app_handle, work_out);		// <3>
+}
+----
+<1> Sets up the screen output, and saves the reference.  We don't need 
+    the values of the other parameters (which relate to the size of text
+    in the screen).
+<2> Sets up the values for declaring a virtual work station.
+<3> Finally creates the virtual workstation, for our application.
+
+
+=== Opening window
+
+Each window in our application will display some information to the user.  A 
+window should respond to many events: it can be moved around the screen, be made 
+smaller or larger, have its sliders moved, and must always keep its contents up 
+to date.  There are, therefore, many pieces of information which a window must 
+be aware of.  For this reason, I use a +struct+ to store all data relevant to 
+a single window.  My basic +win_data+ is as follows:
+
+----
+struct win_data {
+	int handle;	/* identifying handle of the window    <1> */
+	char * text;	/* text to display in window           <2> */
+};
+----
+<1> Every window has a unique +handle+ to identify it.
+<2> Application-specific data, used to control what is shown in window.
+
+As we proceed through this guide, the contents of +win_data+ will expand.  In 
+addition, your application will have various data that is relevant to the window.
+This should also be stored or referred to in +win_data+: for now, we use +text+ 
+as our example application's specific data.
+
+Creating a window requires setting up an instance of +win_data+ with the 
+relevant data, creating a window, and then showing it.  The following code
+appears in "windows.c", in the +start_program+ function.
+
+----
+struct win_data wd;
+int fullx, fully, fullw, fullh;
+
+wind_get (0, WF_WORKXYWH, &fullx, &fully, &fullw, &fullh);		// <1>
+wd.handle = wind_create (NAME|CLOSER, fullx, fully, fullw, fullh);	// <2>
+wind_set (wd.handle, WF_NAME, "Example: Version 1", 0, 0);		// <3>
+wind_open (wd.handle, fullx, fully, 300, 200);				// <4>
+wd.text = "Hello";							// <5>
+----
+<1> This line finds the current size of the desktop.  The first parameter, 0, 
+    refers to the desktop.  The next, +WF_WORKXYWH+, tells the function which
+    data to get, and the remaining addresses are locations to store the result.
+<2> This line creates the window.  The first parameter defines which parts of 
+    the window to include.  Notice we save the handle in our +wd+ variable.
+    Also, we give the maximum dimensions for the window - in this case, the 
+    size of the desktop.
+<3> Sets the value of +WF_NAME+ in our window: this is the title of the window.
+<4> Finally, open the window on the screen.  The last four parameters define 
+    the x, y position and w, h size of the window.  These do not have to be 
+    the same as the maximum size of the window.
+<5> Set up some application-specific data for our window: in this case, the 
+    text to display in the window.
+    
+The functions +wind_set+ and +wind_get+ will be met frequently as you work 
+with windows.  They both take a window handle as their first parameter, and 
+then an identifier for some component/information of that window.  Handle 0 
+is used to refer to the desktop.  
+
+The identifier refers to different parts of the window.  Some of the values 
+we will use include:
+
+* WF\_NAME : the text in the title of the window
+* WF\_INFO : the text in the information line of the window
+* WF\_WORKXYWH : the current working area of the window, on which you can draw
+* WF\_CURRXYWH : the current size of the window, including its widgets
+* WF\_PREVXYWH : the previous size of the window, including its widgets
+* WF\_FULLXYWH : the maximum size of the window, including its widgets
+* WF\_HSLIDE : the position of the horizontal slider
+* WF\_VSLIDE : the position of the vertical slider
+* WF\_HSLSIZE : the size of the horizontal slider
+* WF\_VSLSIZE : the size of the vertical slider
+
+Notice in +wind_create+ we include the flags +NAME|CLOSER+.  These tell our window 
+to include space for a title, and for a close box.  We set the title through 
++WF_NAME+, as above. The close box is used to exit the program, and we discuss 
+how this works when we cover the event loop, below.  Windows can contain many 
+parts, and to use them we add them to the list of flags.  Some common flags are:
+
+* NAME : for the title of a window
+* CLOSER : adds a close box
+* FULLER : adds option to make window its maximum size, and restore
+* MOVER : allows window to be moved
+* INFO : an internal information line, for the window
+* SIZER : allows window to be resized
+* UPARROW : shows the up arrow on the vertical scrollbar
+* DNARROW : shows the down arrow on the vertical scrollbar
+* VSLIDE : includes a vertical scrollbar
+* LFARROW : shows the left arrow on the horizontal scrollbar
+* RTARROW : shows the right arrow on the horizontal scrollbar
+* HSLIDE : includes a horizontal scrollbar
+
+The function +start_program+ continues as follows:
+
+----
+draw_example (app_handle, &wd);			// <1>
+
+/* 2. process events for our window */
+event_loop (&wd);				// <2>
+
+/* 3. close and remove our window */
+wind_close (wd.handle);				// <3>
+wind_delete (wd.handle);			// <4>
+----
+<1> Draws the content of our window.  (This is only here for version 1.)
+<2> Waits for the user to interact with our program.  Returns when the 
+    user closes the window.
+<3> To tidy up, we first close our window, to remove it from the screen.
+<4> Finally, we delete the window, releasing its handle to be used again.
+    
+=== Displaying some content
+
+A function +draw_example+ is used to draw the window contents on the screen.
+Our example simply displays the given text in the window.
+
+----
+void draw_example (int app_handle, struct win_data * wd) {
+
+	v_gtext (app_handle, 10, 60, wd->text); // <1>
+
+}
+----
+<1> Displays text at the given coordinates on the screen.  Note we use 
+    +app_handle+, referring to the screen, in calling the VDI functions.
+
+=== Event Loop
+
+All GEM programs work in an "event driven" manner.  This means that the 
+program waits for the user or operating system to send it an event: something
+to do.  The program then does what it wants to do with that event, before
+returning to the loop.  For example, clicking on the close icon at the 
+top-left of a window will send a message to our program.  Our program must 
+then do the appropriate thing, in this case, we must close the window and 
+end the program.
+
+For the first example we will use the function +evnt_mesag+ to obtain 
+events for our program.  In any real GEM program, you will use its big 
+brother +evnt_multi+, which lets you spot events from the mouse, keyboard
+or other sources as well as those relating to your window.  For the first 
+example, to keep things simple, we will only need to respond to window 
+events, so we use this call.  +evnt_multi+ is explained in a later 
+section, when we discuss the second example, Sokoban.
+
+----
+void event_loop (struct win_data * wd) {
+	int msg_buf[8];				// <1>
+
+	do {
+		evnt_mesag (msg_buf);		// <2>
+
+	} while (msg_buf[0] != WM_CLOSED);	// <3>
+}
+----
+<1> Set up some storage for the event message.
+<2> Retrieve the next event.
+<3> Loop until we receive a +WM_CLOSED+ message, indicating that the 
+    user clicked on close.
+
+In later sections, we will respond to more kinds of events within the loop.
+We will then discuss the other values that can be used in +msg_buf+.
+
+=== Sample Program: Version 1
+
+At this point, we have a window which displays some text inside it.  However, 
+if you drag a window over the top of it, the contents will disappear.  Also, 
+none of the widgets (except for close) do anything: we cannot move the window, 
+bring it to the top when we click on another window, etc.  Also, the 
+background shows through in our window.
+
+
+== Redraw events
+
+We would like to have a decent display in our window.  Firstly, it should not 
+show the background, but a nice clean surface.  Secondly, it should keep 
+showing the contents we want, even when we drag another window over it and 
+away.  
+
+Although there are several steps involved in the following, the code is 
+completely reusable in all your GEM programs.  Once you have a working 
+template, you can simply copy it and everything should work.
+
+=== Drawing within an Area
+
+If you remember our function +draw_example+, the call to +v_gtext+ does not 
+refer to our window, only the screen.  Our drawing code could, in theory, 
+write anywhere on the screen we want.  However, this would break the illusion 
+of our program providing a window onto some information.  A better solution 
+is to set up a _clip_ area: this is a rectangle we define, so that if our 
+VDI calls should go outside that area, they will be clipped to only appear 
+within the given rectangle.  
+
+We thus wrap our call to +draw_example+ in a function +draw_interior+, which 
+sets up a clip area and also clears the display of our window for us.  The 
+following function does a lot of useful work for us.  First, it hides the 
+mouse, so we don't draw over it.  Second, it sets a clip area (+set_clip+ is 
+defined in "windows.c"), so that all VDI calls will only show within the 
+given rectange.  We then get the dimensions of the working area of our 
+window.  This is the same +wind_get+ call we made before, except now we 
+ask for the working area of our window, instead of the desktop.  The working 
+area will exclude the window boundaries, any scroll bars, etc.
+A call to clear the window and we can then call out to our application's 
+drawing code.  Finally the clipping is turned off, and the mouse reshown.
+
+----
+/* Draw interior of window, within given clipping rectangle */
+void draw_interior (struct win_data * wd, GRECT clip) {
+	int pxy[4];
+	int wrkx, wrky, wrkw, wrkh; /* some variables describing current working area */
+
+	/* set up drawing, by hiding mouse and setting clipping on */
+	graf_mouse (M_OFF, 0L);
+	set_clip (true, clip);
+	wind_get (wd->handle, WF_WORKXYWH, &wrkx, &wrky, &wrkw, &wrkh);
+
+	/* clears the display */
+	vsf_color (app_handle, WHITE);
+	pxy[0] = wrkx;
+	pxy[1] = wrky;
+	pxy[2] = wrkx + wrkw - 1;
+	pxy[3] = wrky + wrkh - 1;
+	vr_recfl (app_handle, pxy);
+
+	/* draws our specific code */
+	draw_example (app_handle, wd);
+
+	/* tidies up */
+	set_clip (false, clip);
+	graf_mouse (M_ON, 0L);
+}
+----
+
+=== Updating a Display
+
+One of the initially most complex aspects of handling windows in GEM is 
+the concept of the rectangle list, and how to manage it.  In essence, the 
+idea is very simple.  Assume our program's window is obscured by several 
+windows.  One of these windows is closed.  Our program will be told to 
+redraw the area which was underneath the window which has now closed.  
+
+However, we cannot blindly fill that area with the contents of our 
+window, because there may be _other_ windows partially obscuring this 
+area.  Hence, we must take a look at every other window on the system, 
+find those which are obscuring our window, and make sure we avoid drawing 
+over them.  This process is called "walking the rectangle list", and is 
+controlled by two get operations:
+
+. +wind_get (wd->handle, WF_FIRSTXYWH, ...)+ retrieves the first rectangle
+  relevant to our window, storing the x, y, w, h values in the remaining 
+  reference parameters.
+. +wind_get (wd->handle, WF_NEXTXYWH, ...)+ retrieves the next rectangle,
+  again storing the x, y, w, h values in the remaining reference parameters.
+
+This continues while the w and h values retrieved are non-zero values: when 
+they are both zero, that signals the end of the rectangle list.
+
+All we check is whether the rectangles in the list intersect our rectangle 
+to update and, if so, we draw the intersected area.
+
+----
+/* Called when application asked to redraw parts of its display.
+   Walks the rectangle list, redrawing the relevant part of the window.
+ */
+void do_redraw (struct win_data * wd, GRECT * rec1) {
+	GRECT rec2;
+
+	wind_update (BEG_UPDATE);			// <1>
+
+	wind_get (wd->handle, WF_FIRSTXYWH, &rec2.g_x, &rec2.g_y, &rec2.g_w, &rec2.g_h); // <2>
+	while (rec2.g_w && rec2.g_h) {			// <3>
+		if (rc_intersect (rec1, &rec2)) {	// <4>
+			draw_interior (wd, rec2);	// <5>
+		}
+		wind_get (wd->handle, WF_NEXTXYWH, &rec2.g_x, &rec2.g_y, &rec2.g_w, &rec2.g_h); // <6>
+	}
+
+	wind_update (END_UPDATE);			// <7>
+}
+----
+<1> Turn off all other window updates, while we update our window contents.
+<2> Retrieve the first rectangle to update.
+<3> We now loop, while there is a rectangle that needs updating.
+<4> Check if the rectangle to update intersects the part of the display we have to update.
+<5> Draw our window only in the area intersecting the two rectangles.
+<6> Retrieve the next rectangle to update.
+<7> Turn back on other window updates.
+
+=== Responding to REDRAW Events
+
+What does the AES do when it thinks our window needs updating?  It sends us 
+a REDRAW event.  Along with the event, it tells us the handle of the window 
+we need to update, and also a rectangle: this rectangle is the area of our
+window it wants us to update.  
+
+For a redraw event, we receive the following information in +msg_buf+:
+
+* msg_buf[0] = WM_REDRAW, the type of event.
+* msg_buf[3] = handle of window which must be redrawn.
+* msg_buf[4] = x coordinate of area to redraw.
+* msg_buf[5] = y coordinate of area to redraw.
+* msg_buf[6] = width of area to redraw, in pixels.
+* msg_buf[7] = height of area to redraw, in pixels.
+
+----
+do {
+	evnt_mesag (msg_buf);
+
+	switch (msg_buf[0]) {                                 	// <1>
+		case WM_REDRAW:   				// <2>
+			do_redraw (wd, (GRECT *)&msg_buf[4]);	// <3>
+			break;
+	}
+} while (msg_buf[0] != WM_CLOSED);
+----
+<1> We use a switch statement to select the action to respond to, based 
+    on the type of event.
+<2> The type for a redraw event.
+<3> We simply call our +do_redraw+ function.  As we only have one window 
+    in this program, we can pass its window data directly.  Notice how
+    the x, y, w, h coordinates in msg_buf[4,5,6,7] are turned into the 
+    GRECT type.
+
+This part of the program does a lot of hard work.  To recap, every time 
+our program must redraw part of its screen, it will receive a REDRAW 
+event, containing the window handle and screen area to redraw.  We pass 
+these to +do_redraw+ which walks the rectangle list, ensuring we draw on only 
+those parts of the window which are not obscured by other windows in the 
+operating system.  +do_redraw+ then calls, for each unobscured rectangle, 
++draw_interior+, which sets the clipping region to the unobscured rectangle
+and draws our application's data into just that region.
+
+The good news is two-fold.  First, having written all this code, it will 
+probably be pretty-much the same for any GEM program.  The main part you 
+need to change is +draw_example+, or its equivalent.  Second, this sequence 
+is called _every time_ the computer thinks you need to update the screen, 
+and so you don't have to do anything extra to keep the window updated in 
+many cases.  In particular, your program will receive a REDRAW event when 
+it starts up, which means we can delete the call to +draw_example+ we had 
+in +start_program+.
+
+=== Sample Program: Version 2
+
+This version includes the REDRAW events, walking the rectangle list, and 
+the code to clear the display background.  When you run the code, the display 
+should now look a lot better.  Try dragging another window over the top of 
+your program: notice how the display updates itself, keeping your window's
+display exactly as you want it.
+
+However, it is now time to try to manage some of those window events.
+
+
+== Simple Events: TOP and MOVE
+
+The first two events we will handle are straightforward, as we can rely on the 
+AES to do the necessary work.  These two events are triggered when our window 
+is brought to the top of the screen, or when our window is moved to a different 
+location.
+
+=== TOP
+
+When several windows are open, only one is "on top".  You can bring a window 
+to the top by clicking on it, or if it is "behind" another window which is closed.
+
+When our window is brought to the top, our application is sent the message 
+WM_TOPPED.  The handle of our window is provided in +msg_buf+.  All we need to 
+do is use +wind_set+ to bring our window to the top.  
+
+In our event loop, we add the following code:
+
+----
+case WM_TOPPED:
+	wind_set (msg_buf[3], WF_TOP, 0, 0);
+	break;
+----
+
+You may wonder how a window that has been partially obscured by another window 
+will be redrawn when you bring it to the top.  The answer is that I lied a little 
+when I said all we need to do is the above: AES will trigger a REDRAW event for 
+a window, when you set it to the top, so our program will have to redraw the 
+window contents.  However, as we already handle REDRAW events, we have nothing 
+else to do - our previous code and AES do everything for us already.
+
+=== MOVE
+
+Windows can be moved, usually, by holding the top bar and dragging them.  For 
+this to be available, you need to include the MOVER option in the parts list 
+for your window when you create it (see the section on creating windows).
+
+When our window is moved, all we need to do is set the window's coordinates to the 
+new location.  The new location is provided in +msg_buf+, positions 4-7. 
+
+In our event loop, we add the following code:
+
+----
+case WM_MOVED:
+	wind_set (msg_buf[3], WF_CURRXYWH, msg_buf[4],
+		msg_buf[5], msg_buf[6], msg_buf[7]);
+	break;
+----
+
+The AES copies our window's contents directly to its new location.  (The AES also 
+sends redraw messages to any windows which our window was obscuring - but we can 
+ignore those.)
+
+We do, however, have to look more closely at our drawing code, now that 
+the window can move anywhere on the screen.  Remember that the code that draws 
+on the screen does so through the VDI, and we do not provide any reference to 
+our window when we do so.  When we move our window, we need to draw the 
+contents of our window in a different location.  To do this, we pass the 
+coordinates of where we want the contents drawn to our draw function.  The 
+provided x,y coordinates then represent the origin we need to use for our 
+drawing code.  We pass these coordinates to our drawing code from +draw_interior+.
+
+----
+void draw_example (int app_handle, struct win_data * wd, int x, int y, int w, int h) {
+
+	v_gtext (app_handle, x+10, y+60, wd->text); // <1>
+
+}
+----
+<1> We offset the drawing location by the x, y position of the window.
+
+=== Sample Program: Version 3
+
+Version 3 now includes these two events.  Notice also the inclusion of +MOVER+
+when the window is created, and the updated +draw_example+ and +draw_interior+ 
+functions.
+
+Our window is now a respectable GEM program.  It redraws itself when requested,
+does not disturb any other windows in the system, can be moved around the 
+screen and brought back to the top.  If you are content with a fixed size 
+window, you now have enough to implement a GEM application.
+
+
+== Changing Size
+
+The next two window controls we will look at are used to alter the size of the 
+window.  The first, the FULLER, allows us to make the window its maximum size.
+Clicking the FULLER a second time will restore the window to its previous size.
+The second is the SIZER, which enables us to dynamically alter the window size 
+to whichever dimensions we wish.
+
+Both these controls rely on the +wind_set+ command to set the current x, y, w, h,
+dimensions of the window. 
+
+=== FULLER
+
+The FULL widget is used to expand our window to its maximum size.  This maximum
+size was set when you created the window, but is usually the extent of the 
+desktop: we stored these numbers in the +fullx+ etc slots of our window data.  
+Once fulled, a window can be restored by again clicking the FULL widget.  The 
+AES enables us to retrieve the previous dimensions of a window using 
++WF_PREVXYWH+ in a call to +wind_get+.
+
+Fortunately, the AES will ensure the display is kept updated, in two ways.
+First, if the window is just made smaller, then nothing needs updating in 
+your program, as the display has simply been truncated.  Second, if the 
+window is made full, it becomes larger, so a REDRAW event is sent to your 
+application, to redraw the new rectangle.  As we already handle these events, 
+nothing extra is needed.
+
+The function to handle the fulled event is as follows.  It is divided into 
+two parts: if the window is already full, then we need to retrieve its previous 
+size and set the current window size to those older values.  If the window 
+is not already full, then we need to retrieve the maximum size, and set the 
+current window size to the maximum (full) values.  In addition, it is 
+traditional to display a little animation of the window growing or shrinking
+to its new size, hence the calls to +graf_shrinkbox+.  (This may not be visible
+on a fast computer: I can't detect them on the Firebee!)
+
+----
+void do_fulled (struct win_data * wd) {
+	if (is_full_window (wd)) { /* it's full, so shrink to previous size */
+		int oldx, oldy, oldw, oldh;
+		int fullx, fully, fullw, fullh;
+
+		wind_get (wd->handle, WF_PREVXYWH, &oldx, &oldy, &oldw, &oldh);	// <1>
+		wind_get (wd->handle, WF_FULLXYWH, &fullx, &fully, &fullw, &fullh); // <2>
+		graf_shrinkbox (oldx, oldy, oldw, oldh, fullx, fully, fullw, fullh); // <3>
+		wind_set (wd->handle, WF_CURRXYWH, oldx, oldy, oldw, oldh); // <4>
+
+	} else { /* make full size */
+		int curx, cury, curw, curh;
+		int fullx, fully, fullw, fullh;
+
+		wind_get (wd->handle, WF_CURRXYWH, &curx, &cury, &curw, &curh);
+		wind_get (wd->handle, WF_FULLXYWH, &fullx, &fully, &fullw, &fullh); // <2>
+		graf_growbox (curx, cury, curw, curh, fullx, fully, fullw, fullh);
+		wind_set (wd->handle, WF_CURRXYWH, fullx, fully, fullw, fullh);
+	}
+}
+----
+<1> Find the previous dimensions of the window.
+<2> Find the maximum dimensions of the window.
+<3> Draw a little animation of the shrinking window.
+<4> Set the window size to the previous dimensions.
+
+Notice the function +is_full_window+.  This function merely checks the current 
+and full dimensions of the window, to see if they are the same.  The function is:
+
+----
+bool is_full_window (struct win_data * wd) {
+	int curx, cury, curw, curh;
+	int fullx, fully, fullw, fullh;
+
+	wind_get (wd->handle, WF_CURRXYWH, &curx, &cury, &curw, &curh);
+	wind_get (wd->handle, WF_FULLXYWH, &fullx, &fully, &fullw, &fullh);
+	if (curx != fullx || cury != fully || curw != fullw || curh != fullh) {
+		return false;
+	} else {
+		return true;
+	}
+}
+----
+
+Finally, to respond to size events, include +WM_FULLED+ in the event loop, as follows:
+
+----
+case WM_FULLED:
+	do_fulled (wd);
+	break;
+----
+
+=== SIZER
+
+The sizer allows the user to adjust the window dimensions to any size she 
+chooses.  The AES will tell your application when the sizer has been adjusted,
+and also tell you the new size of the window (in +msg_buf+).  Your program 
+must alter the size of the window, and make any other adjustments required to 
+make the window contents suit its new size (this is particularly important
+when you have sliders as well, for which see the next section).
+
+Fortunately, the AES will ensure the display is kept updated, just as 
+with the fulled event, above.  
+First, if the window is just made smaller, then nothing needs updating in 
+your program, as the display has simply been truncated.  Second, if the 
+window is made larger, then a REDRAW event is sent to your application, to 
+redraw the new rectangle.  As we already handle these events, nothing 
+extra is needed.
+
+The code to actually resize our window is very simple.  All we need to 
+do is set the current dimensions of the window to the new size.  We 
+add a simple check that the new dimensions are not _too_ small, so the 
+user cannot reduce the window beyond a given minimum.
+
+----
+void do_sized (struct win_data * wd, int * msg_buf) {
+	if (msg_buf[6] < MIN_WIDTH) msg_buf[6] = MIN_WIDTH;	// <1>
+	if (msg_buf[7] < MIN_HEIGHT) msg_buf[7] = MIN_HEIGHT;
+
+	wind_set (wd->handle, WF_CURRXYWH, msg_buf[4], msg_buf[5], msg_buf[6], msg_buf[7]); // <2>
+}
+----
+<1> To prevent the user sizing our window out of existence, we check 
+    that the new width and height won't be too small.  The minimum 
+    dimensions are now defined in "windows.h".
+<2> All we need to do is set our window's current x, y, w, h to the new 
+    size.
+
+To respond to size events, include +WM_SIZED+ in the event loop, as follows:
+
+----
+case WM_SIZED:
+	do_sized (wd, msg_buf); // <1>
+	break;
+----
+<1> Pass the window and the message buffer to +do_sized+.
+
+=== Sample Program: Version 4
+
+Version 4 now supports more of the window's widgets: you can resize the window 
+using the button at the bottom-right, and also make the window switch between 
+full screen and its original size.
+
+To make the display more interesting, the window contains several lines of a 
+poem.  You need to resize the window to see more of the poem.  How much you 
+can see, will depend on the size of your screen.  To see the rest of the poem, 
+we somehow need to move the window "over" the poem being displayed - this 
+introduces our last topic, sliders.
+
+
+== Sliders
+
+The sliders are what give the illusion of windows looking onto a wider space of 
+data.  Sliders are complicated to handle, as users have many ways of interacting 
+with them.  A slider can be dragged directly.  Users can click on the arrows,
+or in the slider bar.  As there are two sliders, this makes for ten functions just 
+to handle the sliders.  In addition, when a window is resized or made full,
+or if the window's contents change, its dimensions change, and so the positions 
+and size of the sliders must be changed as well.
+
+I will cover the code for sliders and arrows in one go, as it is all related. 
+As the vertical and horizontal sliders are essentially the same, code wise, I shall
+only present code for the vertical slider here: code for the horizontal slider is 
+contained in the example code.
+
+Because of the large number of events that need handling (10 in total), this 
+part of your program will be the most extensive, and the most complicated.  
+Adding sliders also requires consideration when drawing the contents of the 
+screen.  
+
+We shall begin by adding sliders to our program, getting the sliders to show 
+the right size and position, then respond to all the events, before finally 
+modifying our +draw\_example+ function to display correctly.
+
+=== Showing the Sliders
+
+Adding the sliders and arrows is done in the parts list when creating our 
+window.  We need to add the slider and its two arrows.  A complete parts list, 
+including all the previously mentioned windows widgets, is:
+
+----
+NAME|CLOSER|FULLER|MOVER|SIZER|UPARROW|DNARROW|VSLIDE|LFARROW|RTARROW|HSLIDE
+----
+
+The AES makes some space for the sliders, as with the other window widgets, and 
+leaves the remaining room for us to draw in.  This is why, when doing operations 
+such as FULL, we use +WF\_CURRXYWH+ to get or set the current window dimensions, 
+but, for drawing _within_ the window, we use +WF\_WORKXYWH+ to get the current 
+_working_ area of the window.
+
+=== Showing the Sliders
+
+Each slider has two parameters: its _size_ and its _position_.  The size must 
+reflect the portion of the window contents we can currently see.  The position 
+must reflect where our current window contents are, in relation to the whole.
+
+
+
+=== Sample Program: Version 5
+
+This version includes all the functions required for handling the sliders, and 
+completes our walk through of the simple example.  
+
+
+== The Info Line
+
+This is a simple to use part of the GEM window.  The info line can be seen in a 
+standard desktop window:
+
+image::images/info.jpg
+
+The info line is the strip that says how many bytes and items there are in the 
+current window.  
+
+We can easily use an info line in our program.  First, when we create a window, 
+we must tell it to include the info line by including +INFO+ in the list of parts.
+Second, at any point, we can place some contents into the info line.
+
+We could include an info line for our poem display, to hold the number of lines.
+Referring to version 5, we would include +INFO+ in the parts for the 
+window.  Then, in line NN during the construction of the window, we can write:
+
+----
+	wind_set (wd->handle, WF_INFO, "57 lines");
+----
+
+As with the title, you need to have some dedicated storage for the string passed 
+to info as GEM will use your pointer and not make a copy.  Length in GEM is 
+restricted to 80 characters (although most AES replacements extend this).
+
+
+== Multi-Window Programming
+
+As an example of multi-window programming, we will consider my Sokoban 
+program.  The source code is at https://github.com/petercrlane/sokoban
+
+If you review that source code, you will find many things similar to the 
+code in this document, however, some things will be different.  This 
+document was written, in part, to simplify and unify the code I have 
+for GEM handling in my programs like Sokoban, and I haven't put all the
+simplifications back.  Also, in a larger application, there are simply 
+more things to handle, which add a layer of complexity.
+
+=== Multiple Window Types
+
+wd->next
+
+=== Multiple Event Types
+
+This is also a good point to introduce multiple event types.
+
+== License
+
+This guide is copyright (c) 2016, Peter Lane, and is provided under 
+version 0.9.4 of the http://owl.apotheon.org/[Open Works License]
+
+Permission is hereby granted by the holder(s) of copyright or other legal
+privileges, author(s) or assembler(s), and contributor(s) of this work, to any
+person who obtains a copy of this work in any form, to reproduce, modify,
+distribute, publish, sell, sublicense, use, and/or otherwise deal in the
+licensed material without restriction, provided the following conditions are
+met:
+
+Redistributions, modified or unmodified, in whole or in part, must retain
+applicable copyright and other legal privilege notices, the above license
+notice, these conditions, and the following disclaimer.
+
+NO WARRANTY OF ANY KIND IS IMPLIED BY, OR SHOULD BE INFERRED FROM, THIS LICENSE
+OR THE ACT OF DISTRIBUTION UNDER THE TERMS OF THIS LICENSE, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS, ASSEMBLERS, OR HOLDERS OF
+COPYRIGHT OR OTHER LEGAL PRIVILEGE BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN ACTION OF CONTRACT, TORT, OR OTHERWISE ARISING FROM, OUT
+OF, OR IN CONNECTION WITH THE WORK OR THE USE OF OR OTHER DEALINGS IN THE WORK.
+
+
