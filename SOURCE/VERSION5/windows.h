@@ -31,6 +31,13 @@ struct win_data {
 	int handle; 	/* identifying handle of the window */
 
 	char ** poem; /* poem to display in window */
+
+	int cell_h;
+	int cell_w;
+	int vert_posn;
+	int horz_posn;
+	int lines_shown;
+	int colns_shown;
 };
 
 void start_program (void);

@@ -3,13 +3,22 @@
 == Introduction
 
 This document is a guide to writing GEM applications in C using 
-AHCC.  I will walk through the implementation of two sample GEM 
-applications.  The first will be described in full detail, and 
-covers the simple display of a single, scrollable window containing 
-text.  The second will be covered in less detail, looking only at 
-the extensions required to write a multi-window GEM application.  
-Currently, I look only at the window handling code: other aspects of 
-GEM programming will be covered in a later update.
+AHCC.  I will walk through the implementation of a sample GEM 
+application, in full detail.  The program initially displays a 
+single window containing some text.  We build the program through 
+various versions, and end up with a multi-window system using 
+sliders and other window widgets.  So far, I look only at the 
+window handling code: other aspects of GEM programming will be 
+covered in a later update.
+
+Why AHCC?  Although there are many options for C programming on the 
+Atari platform, AHCC is kept up to date and runs natively on all Atari 
+computers.  It includes an editor as well as compiler and linker: I use 
+this program extensively on my Firebee, and also on my Atari STE.  
+AHCC is available from: http://members.chello.nl/h.robbers/
+Although I focus on AHCC, most of what I write will apply to other 
+C compilers for the Atari, but the examples may need some changes in 
+their header files and project/make files.
 
 There are other guides out there.  I learnt much of the following 
 using CManShip, written by Clayton Walnum, and available from 
@@ -27,9 +36,9 @@ https://github.com/petercrlane/cmanship).  In particular:
 
 After working through CManShip, I tried writing a few different 
 programs, and, partly through trial and error, and partly with the 
-help of contributors at http://atari-forum.com, I feel able to put 
+help of contributors at http://atari-forum.com, I now feel able to put 
 together some simple GEM programs.  This document is, in part, my 
-attempt to document what I have learnt from this process.  Also, it 
+attempt to record what I have learnt from this process.  Also, it 
 is an attempt to simplify and unify the techniques I am using.  
 However, this document is, in many ways, a statement of the limits 
 of my own knowledge, so take anything I write with a healthy degree 
@@ -37,7 +46,7 @@ of skepticism, and let me know of any errors and improvements.
 
 I will assume you already know the C programming language (in particular, 
 C89), and also that you know what a GEM program is.  However, I shall 
-try to cover what you need to write in C to get a GEM program working, 
+try to cover what you need to write in C to get a GEM program working 
 and interacting with the operating system.
 
 This guide is not a complete reference to GEM programming through 
@@ -59,7 +68,7 @@ running Ubuntu.  The examples were tested using version 5.3 of the
 http://members.chello.nl/h.robbers/[AHCC C compiler]
 on a Firebee and, where appropriate, an Hatari-emulated Atari ST.
 
-Source code for the guide, and its first example, is available at:
+Source code for the guide, and its example code, is available at:
 https://github.com/petercrlane/gemguide
 
 == AHCC Setup and Project Files
@@ -112,6 +121,14 @@ The usual things to change in the above project are:
   e.g. for the Firebee with floating point, use ahccstdf.lib and ahccgemf.lib
   The libs shown are suitable for targeting the Atari ST / 68000.
 
+The standard library comes in four versions (thanks to Eero Tamminen for 
+explaining this):
+
+. ahccstdf.lib (Firebee / Coldfire)
+. ahccstd.lib (680x0 + FPU)
+. ahccstdi.lib (68000 with floating point support missing from printf/scanf)
+. ahccstfi.lib (Firebee / Coldfire without FPU, may be compatible with Falcon)
+
 
 == Overview of a GEM Program
 
@@ -147,11 +164,25 @@ examples here follow my own practice in managing this.  I shall try to make
 clear which parts of the examples are GEM requirements, and which are my own 
 suggestions.)
 
+The different components of a GEM window:
+
+image::images/info.jpg[width=300]
+
+A GEM program typically does the following:
+
+. initialise the application
+. open a VDI screen, and obtain a handle to access it
+. optionally open an RSC file and set up the menu
+. open an initial window or windows
+. enter the event loop, responding to all window / other events until 
+  the application is quit
+. free any resources
+. free the VDI screen
+. exit the application
 
 == Getting Started: Opening a Window
 
-I find it convenient to separate the initial stage into three sets of 
-source code:
+I find it convenient to separate the code into three sets of source code:
 
 . main.c contains the +main+ function, and handles all the setup code before
   calling your program.
@@ -161,6 +192,7 @@ source code:
 
 The header file "windows.h" is also important.  Here we define some variables 
 which AES requires, and also our own window data structure (see below).
+
 
 === Starting a GEM Application
 
@@ -189,8 +221,8 @@ void main (int argc, char ** argv) {
 <2> This function we must provide, and is used to create and open a work
     space for our program, and store the application handle.
 <3> This function we provide, and is where our program runs.
-<4> After our program has finished, and resources are freed.
-<5> Using the application handle from <2>, the work space is closed.
+<4> After our program has finished, resources are freed.
+<5> Using the application handle from (2), the work space is closed.
 <6> And finally our application exits.
 
 Functions (2) and (3) must be provided by ourselves. (2) is a standard process 
@@ -269,6 +301,11 @@ wd.text = "Hello";							// <5>
     the same as the maximum size of the window.
 <5> Set up some application-specific data for our window: in this case, the 
     text to display in the window.
+
+Note, on, for example, an Atari ST, it is possible for GEM to run out of windows.
+If this happens, the handle retrieved from +wind_create+ will be negative.
+You should, between (2) and (3), check if +wd.handle+ is negative, and warn 
+the user if so.  We won't worry about this in our example program.
     
 The functions +wind_set+ and +wind_get+ will be met frequently as you work 
 with windows.  They both take a window handle as their first parameter, and 
@@ -293,7 +330,7 @@ Notice in +wind_create+ we include the flags +NAME|CLOSER+.  These tell our wind
 to include space for a title, and for a close box.  We set the title through 
 +WF_NAME+, as above. The close box is used to exit the program, and we discuss 
 how this works when we cover the event loop, below.  Windows can contain many 
-parts, and to use them we add them to the list of flags.  Some common flags are:
+parts, and to use them we include them in the list of flags.  Some common flags are:
 
 * NAME : for the title of a window
 * CLOSER : adds a close box
@@ -347,7 +384,7 @@ void draw_example (int app_handle, struct win_data * wd) {
 
 All GEM programs work in an "event driven" manner.  This means that the 
 program waits for the user or operating system to send it an event: something
-to do.  The program then does what it wants to do with that event, before
+to do.  The program then does what it wants in response to that event, before
 returning to the loop.  For example, clicking on the close icon at the 
 top-left of a window will send a message to our program.  Our program must 
 then do the appropriate thing, in this case, we must close the window and 
@@ -358,8 +395,7 @@ events for our program.  In any real GEM program, you will use its big
 brother +evnt_multi+, which lets you spot events from the mouse, keyboard
 or other sources as well as those relating to your window.  For the first 
 example, to keep things simple, we will only need to respond to window 
-events, so we use this call.  +evnt_multi+ is explained in a later 
-section, when we discuss the second example, Sokoban.
+events, so we use this call. 
 
 [source,c]
 ----
@@ -389,7 +425,7 @@ bring it to the top when we click on another window, etc.  Also, the
 background shows through in our window.
 
 
-== Redraw events
+== Updating a Window: Redraw Events
 
 We would like to have a decent display in our window.  Firstly, it should not 
 show the background, but a nice clean surface.  Secondly, it should keep 
@@ -402,7 +438,7 @@ template, you can simply copy it and everything should work.
 
 === Drawing within an Area
 
-If you remember our function +draw_example+, the call to +v_gtext+ does not 
+Look again at our function +draw_example+: the call to +v_gtext+ does not 
 refer to our window, only the screen.  Our drawing code could, in theory, 
 write anywhere on the screen we want.  However, this would break the illusion 
 of our program providing a window onto some information.  A better solution 
@@ -412,11 +448,11 @@ within the given rectangle.
 
 We thus wrap our call to +draw_example+ in a function +draw_interior+, which 
 sets up a clip area and also clears the display of our window for us.  The 
-following function does a lot of useful work for us.  First, it hides the 
-mouse, so we don't draw over it.  Second, it sets a clip area (+set_clip+ is 
-defined in "windows.c"), so that all VDI calls will only show within the 
-given rectange.  We then get the dimensions of the working area of our 
-window.  This is the same +wind_get+ call we made before, except now we 
+following +draw_interior+ function does a lot of useful work for us.  First, 
+it hides the mouse, so we don't draw over it.  Second, it sets a clip area 
+(+set_clip+ is defined in "windows.c"), so that all VDI calls will only show 
+within the given rectange.  We then get the dimensions of the working area of 
+our window.  This is the same +wind_get+ call we made before, except now we 
 ask for the working area of our window, instead of the desktop.  The working 
 area will exclude the window boundaries, any scroll bars, etc.
 A call to clear the window and we can then call out to our application's 
@@ -430,12 +466,12 @@ void draw_interior (struct win_data * wd, GRECT clip) {
 	int wrkx, wrky, wrkw, wrkh; /* some variables describing current working area */
 
 	/* set up drawing, by hiding mouse and setting clipping on */
-	graf_mouse (M_OFF, 0L);
+	graf_mouse (M_OFF, 0L);					// <1>
 	set_clip (true, clip);
 	wind_get (wd->handle, WF_WORKXYWH, &wrkx, &wrky, &wrkw, &wrkh);
 
 	/* clears the display */
-	vsf_color (app_handle, WHITE);
+	vsf_color (app_handle, WHITE);				// <2>
 	pxy[0] = wrkx;
 	pxy[1] = wrky;
 	pxy[2] = wrkx + wrkw - 1;
@@ -443,17 +479,21 @@ void draw_interior (struct win_data * wd, GRECT clip) {
 	vr_recfl (app_handle, pxy);
 
 	/* draws our specific code */
-	draw_example (app_handle, wd);
+	draw_example (app_handle, wd);				// <3>
 
 	/* tidies up */
-	set_clip (false, clip);
+	set_clip (false, clip);					// <4>
 	graf_mouse (M_ON, 0L);
 }
 ----
+<1> Hide the mouse, set clipping on, and find the work area.
+<2> Clear the work area.
+<3> Call out to our drawing code.
+<4> Set clipping off, and restore the mouse.
 
 === Updating a Display
 
-One of the initially most complex aspects of handling windows in GEM is 
+One of the technically more complex aspects of handling windows in GEM is 
 the concept of the rectangle list, and how to manage it.  In essence, the 
 idea is very simple.  Assume our program's window is obscured by several 
 windows.  One of these windows is closed.  Our program will be told to 
@@ -465,9 +505,9 @@ area.  Hence, we must take a look at every other window on the system,
 find those which are obscuring our window, and make sure we avoid drawing 
 over them.  
 
-Consider the following two images.  In the first image, we have three windows,
-all overlapping each other.  We now close the top window: how should the back 
-window, the one showing the list "Classic 1" etc, be updated?
+For example, consider the following two images.  In the first image, we have 
+three windows,all overlapping each other.  We now close the top window: how 
+should the back window, the one showing the list "Classic 1" etc, be updated?
 
 image::images/redraw-1.png[width=300]
 
@@ -493,7 +533,7 @@ Walking the rectangle list is controlled by two get operations:
   again storing the x, y, w, h values in the remaining reference parameters.
 
 This continues while the w and h values retrieved are non-zero values: when 
-they are both zero, that signals the end of the rectangle list.
+they are both zero, we have reached the end of the rectangle list.
 
 All we check is whether the rectangles in the list intersect our rectangle 
 to update and, if so, we draw the intersected area.
@@ -508,12 +548,14 @@ void do_redraw (struct win_data * wd, GRECT * rec1) {
 
 	wind_update (BEG_UPDATE);			// <1>
 
-	wind_get (wd->handle, WF_FIRSTXYWH, &rec2.g_x, &rec2.g_y, &rec2.g_w, &rec2.g_h); // <2>
+	wind_get (wd->handle, WF_FIRSTXYWH, 
+		  &rec2.g_x, &rec2.g_y, &rec2.g_w, &rec2.g_h); // <2>
 	while (rec2.g_w && rec2.g_h) {			// <3>
 		if (rc_intersect (rec1, &rec2)) {	// <4>
 			draw_interior (wd, rec2);	// <5>
 		}
-		wind_get (wd->handle, WF_NEXTXYWH, &rec2.g_x, &rec2.g_y, &rec2.g_w, &rec2.g_h); // <6>
+		wind_get (wd->handle, WF_NEXTXYWH, 
+			  &rec2.g_x, &rec2.g_y, &rec2.g_w, &rec2.g_h); // <6>
 	}
 
 	wind_update (END_UPDATE);			// <7>
@@ -589,10 +631,11 @@ should now look a lot better.  Try dragging another window over the top of
 your program: notice how the display updates itself, keeping your window's
 display exactly as you want it.
 
-However, it is now time to try to manage some of those window events.
+However, it is now time to use some of the other possible window controls, 
+and manage the events they trigger.
 
 
-== Simple Events: TOP and MOVE
+== Simple Window Events: TOP and MOVE
 
 The first two events we will handle are straightforward, as we can rely on the 
 AES to do the necessary work.  These two events are triggered when our window 
@@ -605,8 +648,8 @@ When several windows are open, only one is "on top".  You can bring a window
 to the top by clicking on it, or if it is "behind" another window which is closed.
 
 When our window is brought to the top, our application is sent the message 
-WM_TOPPED.  The handle of our window is provided in +msg_buf+.  All we need to 
-do is use +wind_set+ to bring our window to the top.  
++WM_TOPPED+.  The handle of our window is provided in +msg_buf+.  All we need 
+to do is use +wind_set+ to bring our window to the top.  
 
 In our event loop, we add the following code:
 
@@ -678,7 +721,7 @@ screen and brought back to the top.  If you are content with a fixed size
 window, you now have enough to implement a GEM application.
 
 
-== Changing Size
+== Changing the Window Size
 
 The next two window controls we will look at are used to alter the size of the 
 window.  The first, the FULLER, allows us to make the window its maximum size.
@@ -702,7 +745,7 @@ Fortunately, the AES will ensure the display is kept updated, in two ways.
 First, if the window is just made smaller, then nothing needs updating in 
 your program, as the display has simply been truncated.  Second, if the 
 window is made full, it becomes larger, so a REDRAW event is sent to your 
-application, to redraw the new rectangle.  As we already handle these events, 
+application, to redraw the new rectangle(s).  As we already handle these events, 
 nothing extra is needed.
 
 The function to handle the fulled event is as follows.  It is divided into 
@@ -780,15 +823,10 @@ when you have sliders as well, for which see the next section).
 
 Fortunately, the AES will ensure the display is kept updated, just as 
 with the fulled event, above.  
-First, if the window is just made smaller, then nothing needs updating in 
-your program, as the display has simply been truncated.  Second, if the 
-window is made larger, then a REDRAW event is sent to your application, to 
-redraw the new rectangle.  As we already handle these events, nothing 
-extra is needed.
 
-The code to actually resize our window is very simple.  All we need to 
-do is set the current dimensions of the window to the new size.  We 
-add a simple check that the new dimensions are not _too_ small, so the 
+The code to actually resize our window is, at this stage, simple.  All we 
+need to do is set the current dimensions of the window to the new size.  
+We add a simple check that the new dimensions are not _too_ small, so the 
 user cannot reduce the window beyond a given minimum.
 
 [source,c]
@@ -797,7 +835,8 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 	if (msg_buf[6] < MIN_WIDTH) msg_buf[6] = MIN_WIDTH;	// <1>
 	if (msg_buf[7] < MIN_HEIGHT) msg_buf[7] = MIN_HEIGHT;
 
-	wind_set (wd->handle, WF_CURRXYWH, msg_buf[4], msg_buf[5], msg_buf[6], msg_buf[7]); // <2>
+	wind_set (wd->handle, WF_CURRXYWH, 
+		  msg_buf[4], msg_buf[5], msg_buf[6], msg_buf[7]); // <2>
 }
 ----
 <1> To prevent the user sizing our window out of existence, we check 
@@ -824,12 +863,12 @@ full screen and its original size.
 
 To make the display more interesting, the window contains several lines of a 
 poem.  You need to resize the window to see more of the poem.  How much you 
-can see, will depend on the size of your screen.  To see the rest of the poem, 
+can see will depend on the size of your screen.  To see the rest of the poem, 
 we somehow need to move the window "over" the poem being displayed - this 
-introduces our last topic, sliders.
+introduces our next topic, sliders.
 
 
-== Sliders
+== Sliding across Window Contents
 
 The sliders are what give the illusion of windows looking onto a wider space of 
 data.  Sliders are complicated to handle, as users have many ways of interacting 
@@ -840,9 +879,9 @@ or if the window's contents change, its dimensions change, and so the positions
 and size of the sliders must be changed as well.
 
 I will cover the code for sliders and arrows in one go, as it is all related. 
-As the vertical and horizontal sliders are essentially the same, code wise, I shall
-only present code for the vertical slider here: code for the horizontal slider is 
-contained in the example code.
+Also, the vertical and horizontal sliders are essentially the same, code wise, 
+so I shall mainly present code for the vertical slider here: code for the 
+horizontal slider is similar, and contained in the example code.
 
 Because of the large number of events that need handling (10 in total), this 
 part of your program will be the most extensive, and the most complicated.  
@@ -850,8 +889,8 @@ Adding sliders also requires consideration when drawing the contents of the
 screen.  
 
 We shall begin by adding sliders to our program, getting the sliders to show 
-the right size and position, then respond to all the events, before finally 
-modifying our +draw_example+ function to display correctly.
+the right size and position, then we modify +draw_example+ to display things 
+correctly, before finally seeing how to respond to all the events.
 
 === Showing the Sliders
 
@@ -869,29 +908,298 @@ such as FULL, we use +WF_CURRXYWH+ to get or set the current window dimensions,
 but, for drawing _within_ the window, we use +WF_WORKXYWH+ to get the current 
 _working_ area of the window.
 
-=== Showing the Sliders
+=== Setting the Sliders
 
 Each slider has two parameters: its _size_ and its _position_.  The size must 
 reflect the portion of the window contents we can currently see.  The position 
 must reflect where our current window contents are, in relation to the whole.
 
+Before we can start, we need to decide a few details about what our window 
+will be displaying, and how using the sliders will affect what is displayed.
+For example, for a window displaying text, we would expect a click on the down 
+arrow to move the display up by a single line of text.  A click on page down 
+would move the display up by a page of text, moving the currently bottom line 
+to the top of the screen.  The vertical slider should reflect the number of 
+lines of text displayed in proportion to the total number of lines available 
+to display.  Similarly, the horizontal arrows would move the text by a character,
+in either direction.
 
+Hence, the first two details we need to decide are the size of a vertical step, 
+and the size of a horizontal step.  For a text display, this will be the height 
+and width of a character, respectively.  For graphical displays, other kinds 
+of step size might be appropriate: in the Sokoban program (see later), I chose 
+the size of a displayed cell as the step size; when displaying an image, perhaps 
+a single pixel would be the required step size.
+
+This step size is an important feature of the window: I store it in the 
++win_data+ structure, and set it when creating the window.  
+
+Four other items of information are also stored in +win_data+.  These are:
+
+. the total number of lines shown (the vertical height of the display);
+. the maximum number of characters in a line (the horizontal width of the display);
+. the _current_ vertical position, the number of lines down in the display; and
+. the _current_ horizontal position, the number of characters across in the display.
+
+These size items are added to +win_data+ as follows:
+
+[source,c]
+----
+struct win_data {
+	int handle; /* window handle */
+
+	int lines_shown; /* number of lines shown in current display */
+	int colns_shown; /* number of columns shown in current display (longest line) */
+	int vert_posn; /* number of lines down of vertical scroll bar */
+	int horz_posn; /* number of characters from left of horizontal scroll bar */
+
+	int cell_h; /* height of char/cell in window */
+	int cell_w; /* width of char/cell in window */
+
+	/* REMAINING SLOTS NOT SHOWN */
+}
+----
+
+The following diagram illustrates each of these six slots:
+
+image::images/sliders.png[width=300]
+
+The size of a slider must indicate the proportion of text actually shown against the total 
+amount of text that could be shown.  In our example, the poem has a number of lines to it.
+If all of the poem is showing in the window, then the vertical slider must be at its maximum 
+- there is nothing to scroll.  If however the window is shorter, so only some of the lines 
+are showing, then the slider size must reflect the proportion of text showing against the 
+total number of lines in the poem.  Similar considerations apply to the horizontal slider.
+
+The following function returns a number from 0 to 1000 based on the required size of the 
+slider.  This is calculated based on the number of lines or characters available (which the 
+size of window would permit) and the number of lines or characters actually shown (which 
+are displayed by the draw code).
+
+[source,c]
+----
+int slider_size (int num_available, int num_shown) {
+	int result;
+
+	/* in case number shown is smaller than those available */
+	if (num_available >= num_shown) { /* all visible 		   <1> */
+		result = 1000; /* so slider complete */
+	} else {
+		result = (1000 * (long)num_available) / num_shown;	// <2>
+	}
+
+	return result;
+}
+----
+<1> Check if all the display will fit in the window: result is 1000 if so.
+<2> Otherwise, find the fraction of 1000, using long multiplication for accuracy.
+
+The _position_ of the slider depends on three parameters: the number of lines or 
+characters available, the number shown, and the current offset from the top or left.
+Again, if the number available exceeds the number to be shown, then the slider is 
+simply at position 0 (the top or left).  
+
+Before working out the proportion, we need to compute the "scrollable region". This 
+is the number of positions along which the slider can move.  For example, if we have 
+a 500 line text, and 50 lines can be displayed at a time, the top line can be moved 
+from line 1 to line 450: so the scrollable region for the vertical slider is 450 lines.
+
+The position of the slider is then computed as 1000 * offset / scrollable_region.
+
+As the ST does not support floating point calculations, the code below computes 
+that fraction using integer division and modulus, and can be used on all Atari 
+computers.
+
+[source,c]
+----
+int slider_posn (int num_available, int num_shown, int offset) {
+	int result;
+
+	/* in case number shown is smaller than those available */
+	if (num_available >= num_shown) { /* all visible */
+		result = 0; /* so slider complete, and show bar at top position */
+	} else {
+		/* number of positions scrollbar can move across: must be positive due to above check */
+		int scrollable_region = num_shown - num_available;
+		int tmp1 = offset / scrollable_region;
+		int tmp2 = offset % scrollable_region;
+
+		result = (1000 * (long)tmp1) + ((1000 * (long)tmp2) / scrollable_region);
+	}
+
+	return result;
+}
+----
+
+Given the above two functions, it is now straight forward to update the sliders.
+Our function simply finds the available numbers of lines and columns, based 
+on the work area of the screen, and then each slider size and position can be 
+updated.  The offset to the sliders is recorded in +wd->vert_posn+ and +wd->horz_posn+: 
+these will be updated when the events, such as moving down a line, are processed.
+
+[source,c]
+----
+void update_sliders (struct win_data * wd) {
+	int lines_avail, cols_avail;
+	int wrkx, wrky, wrkw, wrkh;
+
+	wind_get (wd->handle, WF_WORKXYWH, &wrkx, &wrky, &wrkw, &wrkh);
+	lines_avail = wrkh / wd->cell_h;	// <1>
+	cols_avail = wrkw / wd->cell_w;		// <2>
+
+ 	/* handle vertical slider 		   <3> */
+	wind_set (wd->handle, WF_VSLSIZE, 
+		  slider_size (lines_avail, wd->lines_shown), 0, 0, 0);
+	wind_set (wd->handle, WF_VSLIDE, 
+		  slider_posn (lines_avail, wd->lines_shown, wd->vert_posn), 0, 0, 0);
+
+	/* handle horizontal slider 		   <4> */
+	wind_set (wd->handle, WF_HSLSIZE, 
+		  slider_size (cols_avail, wd->colns_shown), 0, 0, 0);
+	wind_set (wd->handle, WF_HSLIDE, 
+		  slider_posn (cols_avail, wd->colns_shown, wd->horz_posn), 0, 0, 0);
+}
+----
+<1> Find the number of lines available to show in the current window, by 
+    dividing the current height by the number of pixels in a given line.
+<2> Find the number of columns available to show in the current window, by 
+    dividing the current width by the number of pixels in a given character.
+<3> Update the vertical slider size and position.
+<4> Update the horizontal slider size and position.
+
+=== Drawing a Window with Sliders
+
+There is no point having sliders if our window contents do not respond 
+to the position of the sliders.  In addition, our drawing code must 
+also record the amount of vertical and horizontal space taken up by the 
+contents.
+
+TODO: drawing code
+
+=== Updating the Sliders
+
+The sliders must be checked and changed whenever the window size or contents 
+are altered.  In practice, we need only alter the sliders when we update the 
+contents of the window.  The most suitable place for this is at the end of 
++draw_interior+.
+
+[source,c]
+----
+void draw_interior (struct win_data * wd, GRECT clip) {
+
+	/* REST OF FUNCTION */
+	
+	set_clip (false, clip);
+	update_sliders (wd); 		// <1>
+	graf_mouse (M_ON, 0L);
+}
+----
+<1> Call the function to update the sliders size and position, based on 
+    the revised height and width of the displayed contents.
+
+The sliders need adapting also whenever the window size changes.
+
+TODO: do_sized
+
+=== Slider Events
+
+The sliders can be moved directly, by dragging them with the mouse.
+
+=== Arrow Events
+
+The remaining events are all known as "arrow" events, and are handled 
+separately.
 
 === Sample Program: Version 5
 
-This version includes all the functions required for handling the sliders, and 
-completes our walk through of the simple example.  
+This version includes all the functions required for handling the sliders.  As
+can be seen by comparing versions 4 and 5, the code for the sliders dominates
+the final program: version 4 has 208 lines of code, and version 5 531 lines.
+The only good news is that almost all this code is completely general, and may
+be reused in all your GEM programs. 
+
+
+== Multi-Window Programming
+
+So far, we have managed the display of a single window.  Managing more than one 
+window is not much different and, thanks to the structure we've used above, 
+requires relatively few changes to the earlier code.  
+
+The critical change is to make the +win_data+ structure a _list_ of instances 
+of such structures.  We achieve this by adding a single field to +win_data+, 
+which is a pointer to the next window in the list:
+
+[source,c]
+----
+struct win_data {
+	int handle;	/* identifying handle of the window */
+	
+	/* OTHER SLOTS */
+	
+	struct win_data * next; /* pointer to next item in list   <1> */
+};
+----
+<1> The added slot provides a pointer to the next item in the list.
+
+When we create a window, we now add its pointer to the end of the list:
+
+[source,c]
+----
+creating window
+----
+
+We still pass the start of the list of windows to +event_loop+.  However now,
+because each event could apply to any one of our windows, we must find the
+correct instance of +win_data+ for each event.  This is done in its own
+function, by looking for the window's handle.  The following function simply
+walks along the list of +win_data+ instances, until it finds the one with a
+handle matching the target handle:
+
+[source,c]
+----
+struct win_data * get_win_data (struct win_data * wd, int handle) {
+	while (wd != NULL) {				// <1>
+		if (wd->handle == handle) break;	// <2>
+		wd = wd->next;				// <3>
+	}
+	return wd;
+}
+----
+<1> Repeat the search until the end of the list.
+<2> When the current handle matches the target handle, end the search.
+<3> Move on to the next window in the list.
+
+Finally, each event which requires an instance of +win_data+ must first find 
+the correct +win_data+ based on the window handle which triggered the event.
+For example, the REDRAW event now looks like:
+
+[source,c]
+----
+case WM_REDRAW:
+	do_redraw (get_win_data(wd, msg_buf[3]),  // <1>
+		   (GRECT *)&msg_buf[4]);
+	break;
+----
+<1> Find the +win_data+ corresponding to the windw handle which triggered this event.
+
+The close event may need some care.  In this example, clicking close for any 
+window will quit the application.  If you wish to have a more dynamic system, 
+with windows that can open and close at arbitrary times, you will need to 
+process the closed event based on the window handle.  For an example of doing 
+this see my Sokoban program, discussed later.
+
+=== Sample Program: Version 6
+
+Version 6 provides a display with three displayed poems.  Notice how 
+few changes were required to the source code, but the final system is very 
+flexible: each window can be moved, resized and handled separately.
 
 
 == The Info Line
 
 This is a simple to use part of the GEM window.  The info line can be seen in a 
-standard desktop window:
-
-image::images/info.jpg
-
-The info line is the strip that says how many bytes and items there are in the 
-current window.  
+standard desktop window: it is the strip that says how many bytes and items 
+there are in the displayed folder.  
 
 We can easily use an info line in our program.  First, when we create a window, 
 we must tell it to include the info line by including +INFO+ in the list of parts.
@@ -899,7 +1207,7 @@ Second, at any point, we can place some contents into the info line.
 
 We could include an info line for our poem display, to hold the number of lines.
 Referring to version 5, we would include +INFO+ in the parts for the 
-window.  Then, in line NN during the construction of the window, we can write:
+window.  Then, after the window has beeen created, we can write:
 
 [source,c]
 ----
@@ -911,25 +1219,76 @@ to info as GEM will use your pointer and not make a copy.  Length in GEM is
 restricted to 80 characters (although most AES replacements extend this).
 
 
-== Multi-Window Programming
+== Additional Events
 
-As an example of multi-window programming, we will consider my Sokoban 
-program.  The source code is at https://github.com/petercrlane/sokoban
+So far, I have kept my treatment of GEM programming at a level which 
+would suit all Atari computers, from the Atari ST running TOS 1.04 to 
+powerful clones such as the Firebee running Mint/XaAES.  The later versions 
+of AES do, however, support additional events and features which are worth 
+including in your programs, if you wish them to run on the more powerful 
+systems.  
+
+This list is a very incomplete summary of some events I have started 
+including in my GEM programs:
+
+1. Shading: Shading is where the window is collapsed into its title bar.
+   On Mint/XaAES this is achieved by right- or double-clicking the title
+   bar.  When shaded, windows should not redraw themselves or respond to 
+   keyboard events.  One way to handle this is to:
+   
+** include a flag +shaded+ in +win_data+
+** set this flag to true when receiving the message +WM_SHADED+
+** set this flag to false when receiving the message +WM_UNSHADED+
+** in +draw_interior+, simply return if +wd->shaded+ is true, before drawing anything
+   
+2. AP_TERM: this message is sent to tell your application to quit.  You 
+   can handle this in the event loop, by checking that +msg_buf[3] != AP_TERM+
+   in the condition of the do-while loop.
+   
+3. WM_ONTOP: If another window is closed which leaves your window on top, this 
+   message is sent to your application.  This is useful in circumstances when 
+   you want to update some displayed information based on the current top 
+   window.
+
+4. WM_BOTTOMED: A single click on the window title in Mint/XaAES sends 
+   the window back in the window list.  To support this, include the following 
+   code in event loop, within the switch statement of message types:
+   
+[source,c]
+----
+case WM_BOTTOMED:
+	wind_set (msg_buf[3], WF_BOTTOM, 0, 0, 0, 0); // <1>
+	break;
+----
+<1> Set the given window handle to the bottom.
+
+== Sokoban: A More Complex Example
+
+As a more complex example of multi-window programming, my Sokoban 
+implementation may be worth a look.  
+The source code is at https://github.com/petercrlane/sokoban
 
 If you review that source code, you will find many things similar to the 
 code in this document, however, some things will be different.  This 
 document was written, in part, to simplify and unify the code I have 
-for GEM handling in my programs like Sokoban, and I haven't put all the
+for GEM handling in my programs, and I haven't put all the
 simplifications back.  Also, in a larger application, there are simply 
 more things to handle, which add a layer of complexity.
 
-=== Multiple Window Types
+In particular, note how I manage different window types: there is one 
+window showing a list of levels, and other windows showing the levels 
+in the game.  I have a slot in +win_data+ called +window_type+, and this 
+is set to +LEVELS+ or +POSITION+ when the window is created.  Within 
++draw_interior+ I now switch to the appropriate calling code, depending 
+on the window type.
 
-wd->next
+Additionally, in some situations, such as when a move is made, not all 
+of the window needs to be redrawn.  I also have a flag for the type of 
+update: when a move is made, this flag is +MOVE+.  The drawing code for 
+the position will then only update the parts of the window related to that 
+last move.  Such refinements are necessary to prevent your application 
+flickering too much, due to constant updates.
 
-=== Multiple Event Types
-
-This is also a good point to introduce multiple event types.
 
 == License
 
