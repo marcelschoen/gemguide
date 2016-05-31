@@ -1074,7 +1074,63 @@ to the position of the sliders.  In addition, our drawing code must
 also record the amount of vertical and horizontal space taken up by the 
 contents.
 
-TODO: drawing code
+To record the amount of space taken up by the contents, I update the number of 
+lines shown every time a line of text is shown, and the number of columns 
+shown by the maximum width of text.  
+
+The vertical slider position is accounted for ignoring the number of lines 
+in the display equal to the slider position.
+
+The horizontal slider position is accounted for by printing the text offset to the 
+left by the slider position.
+
+Note, I don't worry about text being displayed off screen, as this is taken care 
+of by the clipping, set in +draw_interior+.
+
+[source,c]
+----
+void draw_example (int app_handle, struct win_data * wd, int x, int y, int w, int h) {
+	int i = 0;
+	int lines_to_ignore = wd->vert_posn;  // <1>
+	int cur_y = y + wd->cell_h;           // <2>
+
+	wd->lines_shown = 0;                  // <3>
+	wd->colns_shown = 0;                  // <4>
+
+	while (wd->poem[i] != 0) {
+		if (lines_to_ignore == 0) {   // <5>
+			v_gtext (app_handle, x+wd->cell_w*(1-wd->horz_posn), cur_y, wd->poem[i]);
+
+			if (strlen(wd->poem[i])+2 > wd->colns_shown) {  // <6>
+				wd->colns_shown = strlen (wd->poem[i]) + 2;
+			}
+
+			cur_y += wd->cell_h;  // <7>
+		} else {                      
+			lines_to_ignore -= 1; // <8>
+		}
+
+		wd->lines_shown += 1;         // <9>
+
+		i = i + 1;
+	}
+
+}
+----
+<1> We have to leave out the lines above the current vertical slider position.
+<2> The next y position in the window at which to display text.
+<3> Clear the current lines shown in the display (height).
+<4> Clear the current columns shown in the display (width). 
+<5> When we have ignored the lines above the current vertical slider position, 
+    we can display the next line of text.
+<6> Update the current columns shown if the current line is wider.
+<7> Move the y position down a line.
+<8> Otherwise, reduce the number of lines to ignore by 1.
+<9> Increase the number of lines shown in the display.
+
+The display of the window contents will depend on your window.  The example above 
+is suitable for lines of text.  For a graphical display, you may have a fixed size 
+for the window, which means some of the calculations can be simplified.
 
 === Updating the Sliders
 
@@ -1097,26 +1153,225 @@ void draw_interior (struct win_data * wd, GRECT clip) {
 <1> Call the function to update the sliders size and position, based on 
     the revised height and width of the displayed contents.
 
-The sliders need adapting also whenever the window size changes.
+The sliders need adapting also whenever the window size changes.  We do this 
+within +do_sized+ by changing the +horz_posn+ and +vert_posn+ values to 
+reflect the change in size of the window.  If, for example, a window is made 
+larger, then it will display more information, and we can reduce the number 
+of lines off the top of the window.
 
-TODO: do_sized
+The sliders themselves will be updated automatically as setting a new window 
+size will trigger a redraw event, which also updates the slider sizes and 
+positions.
+
+[source,c]
+----
+void do_sized (struct win_data * wd, int * msg_buf) {
+	int new_height, new_width;
+
+	if (msg_buf[6] < MIN_WIDTH) msg_buf[6] = MIN_WIDTH;
+	if (msg_buf[7] < MIN_HEIGHT) msg_buf[7] = MIN_HEIGHT;
+
+	// <1>
+	new_height = (msg_buf[7] / wd->cell_h) + 1; /* find new height in characters */
+	new_width = (msg_buf[6] / wd->cell_w) + 1;  /* find new width in characters */
+
+	/* if new height is bigger than lines_shown - vert_posn,
+	   we can decrease vert_posn to show more lines */
+	if (new_height > wd->lines_shown - wd->vert_posn) {	// <2>
+		wd->vert_posn -= new_height - (wd->lines_shown - wd->vert_posn);
+		if (wd->vert_posn < 0) wd->vert_posn = 0;
+	}
+	/* if new height is less than lines_shown - vert_posn,
+	   we leave vertical position in same place,
+	   so nothing has to be done 				   <3> */
+
+	/* similarly, if new width is bigger than colns_shown - horz_posn,
+	   we can decrease horz_posn to show more columns */
+	if (new_width > wd->colns_shown - wd->horz_posn) {	// <4>
+		wd->horz_posn -= new_width - (wd->colns_shown - wd->horz_posn);
+		if (wd->horz_posn < 0) wd->horz_posn = 0;
+	}
+
+	wind_set (wd->handle, WF_CURRXYWH, 			// <5>
+		  msg_buf[4], msg_buf[5], msg_buf[6], msg_buf[7]);
+}
+----
+<1> +new_height+ and +new_width+ are the number of characters that will fit 
+    vertically and horizontally in the new window size.
+<2> If the height has increased, we can show more lines, and so reduce the 
+    number of lines off the top of the window.
+<3> If the height has decreased, we leave the top line where it is.
+<4> Similarly, alter the left column only if the window has got wider.
+<5> Setting the new window size will trigger a redraw event, updating the 
+    display and sliders, if required.
 
 === Slider Events
 
-The sliders can be moved directly, by dragging them with the mouse.
+The sliders can be moved directly, by dragging them with the mouse.  These
+events have their own message type, one for the vertical and one for the 
+horizontal slider.  +msg_buf[4]+ contains the new position of the slider, as 
+a number between 0 (top/left) and 1000 (bottom/right).
+
+[source,c]
+----
+case WM_VSLID:
+	wind_set (msg_buf[3], WF_TOP, 0, 0);	// <1>
+	do_vslide (wd, msg_buf[4]);		// <2>
+	break;
+
+case WM_HSLID:
+	wind_set (msg_buf[3], WF_TOP, 0, 0);
+	do_hslide (wd, msg_buf[4]);
+	break;
+----
+<1> I force the window to the top when moving the slider: in Mint, it 
+    is possible to grab the slider and move it, leaving the window in 
+    the background.  I think this is a flaw, hence the forced top.
+<2> Call the code to handle the slider, along with its new position.
+
+The code to handle the slider update requires us to compute any change 
+to the top line.  The new vertical position reflects the location of 
+the new slider position along the scrollable region.
+
+[source,c]
+----
+void do_vslide (struct win_data * wd, int posn) {
+	GRECT r;
+	int lines_avail;
+
+	wind_get (wd->handle, WF_WORKXYWH, &r.g_x, &r.g_y, &r.g_w, &r.g_h);
+	lines_avail = r.g_h / wd->cell_h; 			// <1>
+	wd->vert_posn = (posn * (long)(wd->lines_shown - lines_avail)) / 1000; // <2>
+	if (wd->vert_posn < 0) wd->vert_posn = 0;		// <3>
+	wind_set (wd->handle, WF_VSLIDE, posn, 0, 0, 0);	// <4>
+	do_redraw (wd, &r);					// <5>
+}
+----
+<1> Find the new number of lines available.
+<2> Compute the new vertical position in the displayed text.
+<3> Ensure this new position is valid.
+<4> Update the position of the vertical slider.
+<5> Redraw the contents of the window (this is not automatic).
+
+The code for handling the horizontal slider is very similar.
 
 === Arrow Events
 
-The remaining events are all known as "arrow" events, and are handled 
-separately.
+The remaining events are all known as "arrow" events: the AES sends the 
+application a message that an arrow event has occurred, and passes the 
+arrow type in +msg_buf[4]+.  
+
+[source,c]
+----
+case WM_ARROWED:
+	wind_set (msg_buf[3], WF_TOP, 0, 0); /* bring to the top   <1> */
+	do_arrow (wd, msg_buf[4]);				// <2>
+	break;
+----
+<1> As with the sliders, we force the window to the top if the arrows are used.
+<2> Call out to the arrow handling code, with the arrow type as a parameter.
+
++do_arrow+ simply calls the appropriate function based on the arrow type.
+
+There are 8 arrow types.  In each slider we can move in either direction by one
+step, or by a "page".  The horizontal slider arrow events are handled identically
+to the vertical ones, except with the obvious change in orientation.  For the 
+vertical slider, the move up or move down is again the same, except for minor 
+changes.  I shall describe here just the UPLINE event, which moves the window 
+down by a single step, and the UPPAGE event, which moves the window down by a 
+whole page of text.  We start with UPPAGE, which is simpler:
+
+[source,c]
+----
+/* This function is called in response to WA_UPPAGE arrow type */
+void do_uppage (struct win_data * wd) {
+	GRECT r;
+	int lines_avail;
+
+	wind_get (wd->handle, WF_WORKXYWH, &r.g_x, &r.g_y, &r.g_w, &r.g_h);
+	lines_avail = r.g_h / wd->cell_h;		// <1>
+	wd->vert_posn -= lines_avail;			// <2>
+	if (wd->vert_posn < 0) wd->vert_posn = 0;	// <3>
+	do_redraw (wd, &r);				// <4>
+}
+----
+<1> Compute the amount of text available on the screen in the vertical direction.
+<2> Alter the vertical position by a screenful of text.
+<3> Check we have not gone too far: 0 is the top.
+<4> Redraw the window contents.
+
+We could, in theory, treat UPLINE in an identical manner.  Instead of changing 
++wd->vert_posn+ by a page of text, we would change it by 1.  The only 
+aesthetic problem with that is that it makes the display flicker: there is a
+better technique, which gives smooth scrolling.  The better technique _copies_ 
+the unchanged, existing image down by one line, and then simply redraws the new 
+exposed line.
+
+The following function uses this better technique.  The first four lines
+compute the new +vert_posn+ in the same way as for +do_uppage+.  We then 
+set up a call to +vro_cpyfm+.  This VDI function copies screen data from 
+one place to another.  In pxy[0-3] we place the location of the start 
+display, and in pxy[4-7] we place the location of the end display, which 
+is the same location but one line down. Finally, we adjust the rectangle 
+so we redraw just the top, exposed parts of the display.
+
+[source,c]
+----
+/* This function is called in response to WA_UPLINE arrow type */
+void do_upline (struct win_data * wd) {
+	FDB s, d;
+	GRECT r;
+	int pxy[8];
+
+	if (wd->vert_posn == 0) return; /* already at top of screen  <1> */
+	wind_get (wd->handle, WF_WORKXYWH, &r.g_x, &r.g_y, &r.g_w, &r.g_h);
+	wd->vert_posn -= 1;
+	if (wd->vert_posn < 0) wd->vert_posn = 0;
+
+	set_clip (true, r);				// <2>
+	graf_mouse (M_OFF, 0L);
+	s.fd_addr = 0L;
+	d.fd_addr = 0L;
+	pxy[0] = r.g_x;					// <3>
+	pxy[1] = r.g_y + 1;
+	pxy[2] = r.g_x + r.g_w;				// <4>
+	pxy[3] = r.g_y + r.g_h - wd->cell_h - 1;
+	pxy[4] = r.g_x;					// <5>
+	pxy[5] = r.g_y + wd->cell_h + 1;
+	pxy[6] = r.g_x + r.g_w;				// <6>
+	pxy[7] = r.g_y + r.g_h - 1;
+	vro_cpyfm (wd->handle, S_ONLY, pxy, &s, &d);	// <7>
+
+	graf_mouse (M_ON, 0L);				// <8>
+	set_clip (false, r);
+	
+	r.g_h = 2*wd->cell_h; /* draw the height of two rows at top <9> */
+	do_redraw (wd, &r);				// <10>
+}
+----
+<1> If we are already at the top of the screen, there is nothing to do, 
+    so return.
+<2> The copy affects the screen, so set a clip region to our window, and 
+    disable the mouse.
+<3> Top left of work area.
+<4> Bottom right of work area, less one row.
+<5> New top left area, which is original top left down one row.
+<6> Bottom right or work area.
+<7> Perform the move on the screen.
+<8> Enable the mouse, and remove the clip region.
+<9> Constrain the redraw to the top two rows.
+<10> Redraw the exposed display area.
+
+The above two functions are repeated four times, for the four different 
+directions of movement.  See the source code for all the variations, and 
+also +do_arrow+.
 
 === Sample Program: Version 5
 
 This version includes all the functions required for handling the sliders.  As
 can be seen by comparing versions 4 and 5, the code for the sliders dominates
-the final program: version 4 has 208 lines of code, and version 5 531 lines.
-The only good news is that almost all this code is completely general, and may
-be reused in all your GEM programs. 
+the final program: version 4 has 238 lines of code, and version 5 has 544 lines,
+more than double the size. 
 
 
 == Multi-Window Programming
@@ -1124,6 +1379,8 @@ be reused in all your GEM programs.
 So far, we have managed the display of a single window.  Managing more than one 
 window is not much different and, thanks to the structure we've used above, 
 requires relatively few changes to the earlier code.  
+
+=== The Window List
 
 The critical change is to make the +win_data+ structure a _list_ of instances 
 of such structures.  We achieve this by adding a single field to +win_data+, 
@@ -1141,12 +1398,75 @@ struct win_data {
 ----
 <1> The added slot provides a pointer to the next item in the list.
 
-When we create a window, we now add its pointer to the end of the list:
+As we create each window, we add its pointer to the end of the current window 
+list.  In our example I create the three windows inside +start_program+; for 
+a larger program, you may want to put this in a separate window-creation 
+function.
 
 [source,c]
 ----
-creating window
+void start_program (void) {
+	struct win_data wd1;
+	struct win_data wd2;
+	struct win_data wd3;
+	int dum, fullx, fully, fullw, fullh;
+
+	graf_mouse (ARROW, 0L); /* ensure mouse is an arrow */
+	wind_get (0, WF_WORKXYWH, &fullx, &fully, &fullw, &fullh);
+
+	/* 1. set up and open our first window */
+	wd1.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
+	wind_set (wd1.handle, WF_NAME, "Example: Version 6 - Blake", 0, 0);
+	wind_open (wd1.handle, fullx, fully, 300, 200);
+	wd1.poem = poem1;
+	wd1.next = NULL;
+
+	wd1.horz_posn = 0;
+	wd1.vert_posn = 0;
+	vst_point (app_handle, 11, &dum, &dum, &wd1.cell_w, &wd1.cell_h);
+
+	/* set up and open our second window */
+	wd2.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
+	wind_set (wd2.handle, WF_NAME, "Example: Version 6 - Keats", 0, 0);
+	wind_open (wd2.handle, fullx, fully, 300, 200);
+	wd2.poem = poem2;
+	wd2.next = NULL;
+	
+	wd2.horz_posn = 0;
+	wd2.vert_posn = 0;
+	vst_point (app_handle, 11, &dum, &dum, &wd2.cell_w, &wd2.cell_h);
+
+	wd3.horz_posn = 0;
+	wd3.vert_posn = 0;
+	vst_point (app_handle, 11, &dum, &dum, &wd3.cell_w, &wd3.cell_h);
+
+	/* add second window to end of list */
+	wd1.next = &wd2;				// <1>	
+	
+	/* set up and open our third window */
+	wd3.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
+	wind_set (wd3.handle, WF_NAME, "Example: Version 6 - Wordsworth", 0, 0);
+	wind_open (wd3.handle, fullx, fully, 300, 200);
+	wd3.poem = poem3;
+	wd3.next = NULL;
+	
+	/* add second window to end of list */
+	wd1.next->next = &wd3;				// <2>
+
+	/* 2. process events for our window */
+	event_loop (&wd1);
+
+	/* 3. close and remove our windows */
+	wind_close (wd1.handle);
+	wind_delete (wd1.handle);
+	wind_close (wd2.handle);
+	wind_delete (wd2.handle);
+	wind_close (wd3.handle);
+	wind_delete (wd3.handle);
+}
 ----
+<1> Use +wd1+ as the head of the list, so attach +wd2+ to it.
+<2> Attach +wd3+ as the third element of the list, beginning with +wd1+.
 
 We still pass the start of the list of windows to +event_loop+.  However now,
 because each event could apply to any one of our windows, we must find the

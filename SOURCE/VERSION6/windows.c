@@ -1,33 +1,8 @@
 #include "windows.h"
 
-void event_loop (struct win_data * wd);
+/* some text to display in the windows */
 
-void do_arrow (struct win_data * wd,int arrow);
-void do_fulled (struct win_data * wd);
-void do_redraw (struct win_data * wd, GRECT * rec1);
-void do_sized (struct win_data * wd, int * msg_buf);
-void do_vslide (struct win_data * wd, int posn);
-void do_hslide (struct win_data * wd, int posn);
-
-void do_uppage (struct win_data * wd);
-void do_dnpage (struct win_data * wd);
-void do_upline (struct win_data * wd);
-void do_dnline (struct win_data * wd);
-void do_lfpage (struct win_data * wd);
-void do_rtpage (struct win_data * wd);
-void do_lfline (struct win_data * wd);
-void do_rtline (struct win_data * wd);
-
-void draw_interior (struct win_data * wd, GRECT clip);
-
-void set_clip (bool flag, GRECT rec);
-bool is_full_window (struct win_data * wd);
-int slider_size (int num_available, int num_shown);
-int slider_posn (int num_available, int num_shown, int offset);
-void update_sliders (struct win_data * wd);
-
-/* some text to display in the window */
-char * poem[] = {
+char * poem1[] = {
 	"    The Tiger",
 	"",
 	"Tiger! Tiger! burning bright",
@@ -64,38 +39,120 @@ char * poem[] = {
 	0
 };
 
+char * poem2[] = {
+  "My heart aches, and a drowsy numbness pains",
+  "My sense, as though of hemlock I had drunk,",
+  "Or emptied some dull opiate to the drains",
+  "One minute past, and Lethe-wards had sunk:",
+  "'Tis not through envy of thy happy lot,",
+  "But being too happy in thine happiness,—",
+  "That thou, light-winged Dryad of the trees",
+  "In some melodious plot",
+  "Of beechen green, and shadows numberless,".
+  "Singest of summer in full-throated ease.",
+  "                           - John Keats",
+  0
+};
+
+char * poem3[] = {
+  "I wandered lonely as a cloud",
+  "That floats on high o'er vales and hills,",
+  "When all at once I saw a crowd,",
+  "A host, of golden daffodils;",
+  "Beside the lake, beneath the trees,",
+  "Fluttering and dancing in the breeze.",
+  "              - William Wordsworth",
+  0
+};
+
+void event_loop (struct win_data * wd);
+
+void do_arrow (struct win_data * wd,int arrow);
+void do_fulled (struct win_data * wd);
+void do_redraw (struct win_data * wd, GRECT * rec1);
+void do_sized (struct win_data * wd, int * msg_buf);
+void do_vslide (struct win_data * wd, int posn);
+void do_hslide (struct win_data * wd, int posn);
+
+void do_uppage (struct win_data * wd);
+void do_dnpage (struct win_data * wd);
+void do_upline (struct win_data * wd);
+void do_dnline (struct win_data * wd);
+void do_lfpage (struct win_data * wd);
+void do_rtpage (struct win_data * wd);
+void do_lfline (struct win_data * wd);
+void do_rtline (struct win_data * wd);
+
+void draw_interior (struct win_data * wd, GRECT clip);
+
+struct win_data * get_win_data (struct win_data * wd, int handle);
+void set_clip (bool flag, GRECT rec);
+bool is_full_window (struct win_data * wd);
+int slider_size (int num_available, int num_shown);
+int slider_posn (int num_available, int num_shown, int offset);
+void update_sliders (struct win_data * wd);
+
 /* ------- The main functions to create and drive a GUI ------- */
 
 /* open window and enter event loop */
 void start_program (void) {
-	struct win_data wd;
-	int fullx, fully, fullw, fullh;
-	int dum;
+	struct win_data wd1;
+	struct win_data wd2;
+	struct win_data wd3;
+	int dum, fullx, fully, fullw, fullh;
 
 	graf_mouse (ARROW, 0L); /* ensure mouse is an arrow */
-
-	/* 1. set up and open our window */
 	wind_get (0, WF_WORKXYWH, &fullx, &fully, &fullw, &fullh);
-	wd.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER|UPARROW|DNARROW|VSLIDE|LFARROW|RTARROW|HSLIDE, fullx, fully, fullw, fullh);
-	wind_set (wd.handle, WF_NAME, "Example: Version 5", 0, 0);
-	wind_open (wd.handle, fullx, fully, 300, 200);
 
-	/* set up application-specific data */
-	wd.poem = poem;
+	/* 1. set up and open our first window */
+	wd1.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
+	wind_set (wd1.handle, WF_NAME, "Example: Version 6 - Blake", 0, 0);
+	wind_open (wd1.handle, fullx, fully, 300, 200);
+	wd1.poem = poem1;
+	wd1.next = NULL;
 
-	/* initialise position in display */
-	wd.horz_posn = 0;
-	wd.vert_posn = 0;
+	wd1.horz_posn = 0;
+	wd1.vert_posn = 0;
+	vst_point (app_handle, 11, &dum, &dum, &wd1.cell_w, &wd1.cell_h);
 
-	/* initialise text size */
-	vst_point (app_handle, 11, &dum, &dum, &wd.cell_w, &wd.cell_h);
+	/* set up and open our second window */
+	wd2.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
+	wind_set (wd2.handle, WF_NAME, "Example: Version 6 - Keats", 0, 0);
+	wind_open (wd2.handle, fullx, fully+30, 300, 200);
+	wd2.poem = poem2;
+	wd2.next = NULL;
+
+	wd2.horz_posn = 0;
+	wd2.vert_posn = 0;
+	vst_point (app_handle, 11, &dum, &dum, &wd2.cell_w, &wd2.cell_h);
+
+	/* add second window to end of list */
+	wd1.next = &wd2;
+
+	/* set up and open our third window */
+	wd3.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
+	wind_set (wd3.handle, WF_NAME, "Example: Version 6 - Wordsworth", 0, 0);
+	wind_open (wd3.handle, fullx, fully+60, 300, 200);
+	wd3.poem = poem3;
+	wd3.next = NULL;
+
+	wd3.horz_posn = 0;
+	wd3.vert_posn = 0;
+	vst_point (app_handle, 11, &dum, &dum, &wd3.cell_w, &wd3.cell_h);
+
+	/* add second window to end of list */
+	wd1.next->next = &wd3;
 
 	/* 2. process events for our window */
-	event_loop (&wd);
+	event_loop (&wd1);
 
-	/* 3. close and remove our window */
-	wind_close (wd.handle);
-	wind_delete (wd.handle);
+	/* 3. close and remove our windows */
+	wind_close (wd1.handle);
+	wind_delete (wd1.handle);
+	wind_close (wd2.handle);
+	wind_delete (wd2.handle);
+	wind_close (wd3.handle);
+	wind_delete (wd3.handle);
 }
 
 /* Standard code to set up GEM arrays and open work area.
@@ -126,39 +183,38 @@ void event_loop (struct win_data * wd) {
 
 			case WM_MOVED:
 				wind_set (msg_buf[3], WF_CURRXYWH, msg_buf[4],
-				msg_buf[5], msg_buf[6], msg_buf[7]);
+					  msg_buf[5], msg_buf[6], msg_buf[7]);
 				break;
 
 			case WM_FULLED:
-				do_fulled (wd);
+				do_fulled (get_win_data(wd, msg_buf[3]));
 				break;
 
 			case WM_SIZED:
-				do_sized (wd, msg_buf);
+				do_sized (get_win_data(wd, msg_buf[3]), msg_buf);
 				break;
 
 			case WM_REDRAW:
-				do_redraw (wd, (GRECT *)&msg_buf[4]);
+				do_redraw (get_win_data(wd, msg_buf[3]), (GRECT *)&msg_buf[4]);
 				break;
 
 			case WM_ARROWED:
 				wind_set (msg_buf[3], WF_TOP, 0, 0); /* bring to the top */
-				do_arrow (wd, msg_buf[4]);
+				do_arrow (get_win_data(wd, msg_buf[3]), msg_buf[4]);
 				break;
 
 			case WM_VSLID:
 				wind_set (msg_buf[3], WF_TOP, 0, 0);
-				do_vslide (wd, msg_buf[4]);
+				do_vslide (get_win_data(wd, msg_buf[3]), msg_buf[4]);
 				break;
 
 			case WM_HSLID:
 				wind_set (msg_buf[3], WF_TOP, 0, 0);
-				do_hslide (wd, msg_buf[4]);
+				do_hslide (get_win_data(wd, msg_buf[3]), msg_buf[4]);
 				break;
 
 		}
 	} while (msg_buf[0] != WM_CLOSED);
-
 }
 
 /* ---------- The following functions respond to events ---------- */
@@ -539,6 +595,15 @@ void draw_interior (struct win_data * wd, GRECT clip) {
 }
 
 /* ------- The following functions are for calculations ------- */
+
+/* Find window data for given handle in the list */
+struct win_data * get_win_data (struct win_data * wd, int handle) {
+	while (wd != NULL) {
+		if (wd->handle == handle) break;
+		wd = wd->next;
+	}
+	return wd;
+}
 
 /* sets/unsets clipping rectangle in VDI */
 void set_clip (bool flag, GRECT rec) {
