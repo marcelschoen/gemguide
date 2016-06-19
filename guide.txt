@@ -11,14 +11,14 @@ sliders and other window widgets.  So far, I look only at the
 window handling code: other aspects of GEM programming will be 
 covered in a later update.
 
-Why AHCC?  Although there are many options for C programming on the 
-Atari platform, AHCC is kept up to date and runs natively on all Atari 
-computers.  It includes an editor as well as compiler and linker: I use 
-this program extensively on my Firebee, and also on my Atari STE.  
-AHCC is available from: http://members.chello.nl/h.robbers/
-Although I focus on AHCC, most of what I write will apply to other 
-C compilers for the Atari, but the examples may need some changes in 
-their header files and project/make files.
+Why AHCC?  Although there are many options for C programming on the Atari
+platform, AHCC is kept up to date and runs natively on (all?) Atari computers
+and clones.  It is a complete IDE, including an editor as well as compiler and
+linker: I use this program extensively on my Firebee, and also on my Atari STE.
+AHCC is available from: http://members.chello.nl/h.robbers/ Although written
+for AHCC, most of what follows will apply to other C compilers for the Atari,
+but the examples may need some changes in their header files and project/make
+files.
 
 There are other guides out there.  I learnt much of the following 
 using CManShip, written by Clayton Walnum, and available from 
@@ -68,24 +68,36 @@ running Ubuntu.  The examples were tested using version 5.3 of the
 http://members.chello.nl/h.robbers/[AHCC C compiler]
 on a Firebee and, where appropriate, an Hatari-emulated Atari ST.
 
-Source code for the guide, and its example code, is available at:
+Source code for the guide and its example code is available at:
 https://github.com/petercrlane/gemguide
 
 == AHCC Setup and Project Files
 
-We will be using the include libraries for AHCC.  Unfortunately, as at 
-version 5.3, some of the constants we require are not in "include/aes.h".
-You need to copy the values from "sinclude/aes.h".  These missing constants 
+AHCC can be downloaded from http://members.chello.nl/h.robbers/
+
+=== Version 5.3 Issues
+
+We will be using the include libraries for AHCC (not the short int 
+versions, in sinclude).  Unfortunately, as at version 5.3, some of 
+the constants we require are not in "include/aes.h". You need to 
+copy the values from "sinclude/aes.h".  These missing constants 
 include:
 
 ----
-WM_SHADED
-WM_UNSHADED
-FL_3Dxxxx
+#define WM_SHADED 22360		// <1>
+#define WM_UNSHADED 22361
+#define FL3DNONE 0x000		// <2>
+#define FL3DIND 0x0200
+#define FL3DBAK 0x0400
+#define FL3DACT	0x0600
+#define FL3DMASK 0x0600
+#define SUBMENU 0x0800
 ----
+<1> These two events are used in TOS 4.0 programs.
+<2> These flags are needed if you create any dialogs in a resource file.
 
 If you get "missing constant" messages from AHCC, first see if they are missing 
-from "aes.h".
+from "include/aes.h".
 
 === Project Files
 
@@ -94,7 +106,7 @@ Structure of a project file:
 ----
 ; some comment
 PROGRAM.PRG       ; <1>
-.C [-7]           ; <2>
+.C [-7 -iinclude] ; <2>
 =                 ; <3>
 ahcstart.o        ; <4>
 
@@ -105,7 +117,7 @@ ahccgem.lib
 gemf.lib
 ----
 <1> Name of output program to compile.
-<2> Optional set of parameters for the compilation.  
+<2> Optional set of parameters for the compilation.
 <3> Separator between output definition and input files.
 <4> The standard startup code, for the linker.
 <5> Your program's .c files are listed.
@@ -113,11 +125,11 @@ gemf.lib
 
 The usual things to change in the above project are:
 
-. line (1) gives the name of your program.
-. line (2), the target platform.  -7 means the Firebee / Coldfire.  You can simply 
-  leave this line out when compiling for the Atari ST / 68000.
-. line (5), expand this with all the .c files in your project.
-. line (6), change this and the subsequence lines for different Atari targets.
+* line (1) gives the name of your program.
+* line (2), the target platform.  -7 means the Firebee / Coldfire, -2 for 
+  68020, and nothing for the Atari ST / 68000.  
+* line (5), expand this with all the .c files in your project.
+* line (6), change this and the subsequence lines for different Atari targets.
   e.g. for the Firebee with floating point, use ahccstdf.lib and ahccgemf.lib
   The libs shown are suitable for targeting the Atari ST / 68000.
 
@@ -151,12 +163,12 @@ to the user moving the sliders around, and you must also ensure what you draw in
 the window remains there (and only there) as your window interacts with the 
 windows of other applications (in MINT) or desk accessories.
 
-The following sections will progressively build up a GEM program to illustrate 
-window handling, gradually ending up with a program that responds to all the 
-expected window events, has scroll bars, and co-exists happily with other windows, 
-preserving its own contents, and not disturbing the neighbours.  Each successive 
-version is provided complete in the source code for this guide, and can be 
-compiled using AHCC.
+The following sections will progressively build up a GEM program to illustrate
+window handling, resulting in a program that responds to all the expected
+window events, has scroll bars, and co-exists happily with other windows,
+preserving its own contents, and not disturbing the neighbours.  Each
+successive version is provided complete in the source code for this guide, and
+can be compiled using AHCC.
 
 (Although there is a lot of code required for managing GEM, with a little 
 discipline it is possible to preserve most of this code between projects.  The 
@@ -196,7 +208,7 @@ which AES requires, and also our own window data structure (see below).
 
 === Starting a GEM Application
 
-We must begin and end our GEM application with some startup and tearup code.
+We must begin and end our GEM application with some startup and teardown code.
 These register our application with the operating system, and provide a unique 
 reference to identify our application.
 
@@ -249,10 +261,10 @@ void open_vwork (void) {
 <3> Finally creates the virtual workstation, for our application.
 
 
-=== Opening window
+=== Opening a window
 
 Each window in our application will display some information to the user.  A 
-window should respond to many events: it can be moved around the screen, be made 
+window may respond to many events: it can be moved around the screen, be made 
 smaller or larger, have its sliders moved, and must always keep its contents up 
 to date.  There are, therefore, many pieces of information which a window must 
 be aware of.  For this reason, I use a +struct+ to store all data relevant to 
@@ -268,10 +280,10 @@ struct win_data {
 <1> Every window has a unique +handle+ to identify it.
 <2> Application-specific data, used to control what is shown in window.
 
-As we proceed through this guide, the contents of +win_data+ will expand.  In 
-addition, your application will have various data that is relevant to the window.
-This should also be stored or referred to in +win_data+: for now, we use +text+ 
-as our example application's specific data.
+As we proceed through this guide, the contents of +win_data+ will expand.  In
+addition, your application will have various data that are relevant to the
+window.  This should also be stored or referred to in +win_data+: for now, we
+use +text+ as our example application's specific data.
 
 Creating a window requires setting up an instance of +win_data+ with the 
 relevant data, creating a window, and then showing it.  The following code
@@ -296,6 +308,8 @@ wd.text = "Hello";							// <5>
     Also, we give the maximum dimensions for the window - in this case, the 
     size of the desktop.
 <3> Sets the value of +WF_NAME+ in our window: this is the title of the window.
+    The title text must be stored in your program somewhere, as the AES does 
+    not make a copy.
 <4> Finally, open the window on the screen.  The last four parameters define 
     the x, y position and w, h size of the window.  These do not have to be 
     the same as the maximum size of the window.
@@ -390,12 +404,11 @@ top-left of a window will send a message to our program.  Our program must
 then do the appropriate thing, in this case, we must close the window and 
 end the program.
 
-For the first example we will use the function +evnt_mesag+ to obtain 
-events for our program.  In any real GEM program, you will use its big 
-brother +evnt_multi+, which lets you spot events from the mouse, keyboard
-or other sources as well as those relating to your window.  For the first 
-example, to keep things simple, we will only need to respond to window 
-events, so we use this call. 
+For the example we will use the function +evnt_mesag+ to obtain events for our
+program.  In any real GEM program, you will use its big brother +evnt_multi+,
+which lets you spot events from the mouse, keyboard or other sources as well as
+those relating to your window.  For the example, to keep things simple, we will
+only need to respond to window events, so we use this call. 
 
 [source,c]
 ----
@@ -422,7 +435,8 @@ At this point, we have a window which displays some text inside it.  However,
 if you drag a window over the top of it, the contents will disappear.  Also, 
 none of the widgets (except for close) do anything: we cannot move the window, 
 bring it to the top when we click on another window, etc.  Also, the 
-background shows through in our window.
+background shows through in our window, particularly a problem if you are 
+running a multi-tasking OS, such as MINT.
 
 
 == Updating a Window: Redraw Events
@@ -443,7 +457,7 @@ refer to our window, only the screen.  Our drawing code could, in theory,
 write anywhere on the screen we want.  However, this would break the illusion 
 of our program providing a window onto some information.  A better solution 
 is to set up a _clip_ area: this is a rectangle we define, so that if our 
-VDI calls should go outside that area, they will be clipped to only appear 
+VDI calls go outside that area, they will be clipped to only appear 
 within the given rectangle.  
 
 We thus wrap our call to +draw_example+ in a function +draw_interior+, which 
@@ -520,8 +534,8 @@ image::images/redraw-2.png[width=300]
 
 The process to ensure we only update the required areas is called "walking 
 the rectangle list".  Our application receives the total area that was 
-revealed by closing the top window, and which now needs updating.  Our 
-application now compares that area to the other windows that are obscuring it,
+revealed by closing the top window, and which needs updating.  Our 
+application compares that area to the other windows that are obscuring it,
 before locating the highlighted rectangle to draw.
 
 Walking the rectangle list is controlled by two get operations:
@@ -568,6 +582,8 @@ void do_redraw (struct win_data * wd, GRECT * rec1) {
 <5> Draw our window only in the area intersecting the two rectangles.
 <6> Retrieve the next rectangle to update.
 <7> Turn back on other window updates.
+
+(Note that +rc_intersect+ is provided within AHCC's librarys.)
 
 === Responding to REDRAW Events
 
@@ -635,7 +651,7 @@ However, it is now time to use some of the other possible window controls,
 and manage the events they trigger.
 
 
-== Simple Window Events: TOP and MOVE
+== Simple Window Events: Top and Move
 
 The first two events we will handle are straightforward, as we can rely on the 
 AES to do the necessary work.  These two events are triggered when our window 
@@ -721,7 +737,7 @@ screen and brought back to the top.  If you are content with a fixed size
 window, you now have enough to implement a GEM application.
 
 
-== Changing the Window Size
+== Changing the Window Size: Full and Resize
 
 The next two window controls we will look at are used to alter the size of the 
 window.  The first, the FULLER, allows us to make the window its maximum size.
@@ -764,10 +780,10 @@ void do_fulled (struct win_data * wd) {
 		int oldx, oldy, oldw, oldh;
 		int fullx, fully, fullw, fullh;
 
-		wind_get (wd->handle, WF_PREVXYWH, &oldx, &oldy, &oldw, &oldh);	// <1>
-		wind_get (wd->handle, WF_FULLXYWH, &fullx, &fully, &fullw, &fullh); // <2>
+		wind_get (wd->handle, WF_PREVXYWH, &oldx, &oldy, &oldw, &oldh);	     // <1>
+		wind_get (wd->handle, WF_FULLXYWH, &fullx, &fully, &fullw, &fullh);  // <2>
 		graf_shrinkbox (oldx, oldy, oldw, oldh, fullx, fully, fullw, fullh); // <3>
-		wind_set (wd->handle, WF_CURRXYWH, oldx, oldy, oldw, oldh); // <4>
+		wind_set (wd->handle, WF_CURRXYWH, oldx, oldy, oldw, oldh);          // <4>
 
 	} else { /* make full size */
 		int curx, cury, curw, curh;
@@ -785,8 +801,9 @@ void do_fulled (struct win_data * wd) {
 <3> Draw a little animation of the shrinking window.
 <4> Set the window size to the previous dimensions.
 
-Notice the function +is_full_window+.  This function merely checks the current 
-and full dimensions of the window, to see if they are the same.  The function is:
+Notice the function +is_full_window+, which returns +true+ if the window is
+currently at its maximum size.  This function merely checks the current and
+full dimensions of the window, to see if they are the same.  The function is:
 
 [source,c]
 ----
@@ -960,7 +977,8 @@ struct win_data {
 }
 ----
 
-The following diagram illustrates each of these six slots:
+The following diagram illustrates each of these six slots (the blue rectangle 
+illustrates the displayed window onto the background text):
 
 image::images/sliders.png[width=300]
 
@@ -1007,8 +1025,7 @@ from line 1 to line 450: so the scrollable region for the vertical slider is 450
 The position of the slider is then computed as 1000 * offset / scrollable_region.
 
 As the ST does not support floating point calculations, the code below computes 
-that fraction using integer division and modulus, and can be used on all Atari 
-computers.
+that fraction using integer division and modulus, and can be used everywhere.
 
 [source,c]
 ----
@@ -1031,7 +1048,7 @@ int slider_posn (int num_available, int num_shown, int offset) {
 }
 ----
 
-Given the above two functions, it is now straight forward to update the sliders.
+Given the above two functions, it is now straightforward to update the sliders.
 Our function simply finds the available numbers of lines and columns, based 
 on the work area of the screen, and then each slider size and position can be 
 updated.  The offset to the sliders is recorded in +wd->vert_posn+ and +wd->horz_posn+: 
@@ -1071,14 +1088,14 @@ void update_sliders (struct win_data * wd) {
 
 There is no point having sliders if our window contents do not respond 
 to the position of the sliders.  In addition, our drawing code must 
-also record the amount of vertical and horizontal space taken up by the 
-contents.
+record the amount of vertical and horizontal space taken up by the 
+contents, to use when setting the size and position of the sliders.
 
 To record the amount of space taken up by the contents, I update the number of 
 lines shown every time a line of text is shown, and the number of columns 
 shown by the maximum width of text.  
 
-The vertical slider position is accounted for ignoring the number of lines 
+The vertical slider position is accounted for by ignoring the number of lines 
 in the display equal to the slider position.
 
 The horizontal slider position is accounted for by printing the text offset to the 
@@ -1161,49 +1178,65 @@ of lines off the top of the window.
 
 The sliders themselves will be updated automatically as setting a new window 
 size will trigger a redraw event, which also updates the slider sizes and 
-positions.
+positions.  Unfortunately, that redraw event will only apply to the newly 
+exposed parts of the window: if we have moved the horizontal or vertical 
+position, then all the contents will need redrawing, and we will need to 
+trigger that redraw ourselves.
 
 [source,c]
 ----
 void do_sized (struct win_data * wd, int * msg_buf) {
 	int new_height, new_width;
+	bool changed;				// <1>
 
 	if (msg_buf[6] < MIN_WIDTH) msg_buf[6] = MIN_WIDTH;
 	if (msg_buf[7] < MIN_HEIGHT) msg_buf[7] = MIN_HEIGHT;
 
-	// <1>
+	// <2>
 	new_height = (msg_buf[7] / wd->cell_h) + 1; /* find new height in characters */
 	new_width = (msg_buf[6] / wd->cell_w) + 1;  /* find new width in characters */
 
 	/* if new height is bigger than lines_shown - vert_posn,
 	   we can decrease vert_posn to show more lines */
-	if (new_height > wd->lines_shown - wd->vert_posn) {	// <2>
+	if (new_height > wd->lines_shown - wd->vert_posn) {	// <3>
 		wd->vert_posn -= new_height - (wd->lines_shown - wd->vert_posn);
 		if (wd->vert_posn < 0) wd->vert_posn = 0;
+		changed = true;					// <4>
 	}
 	/* if new height is less than lines_shown - vert_posn,
 	   we leave vertical position in same place,
-	   so nothing has to be done 				   <3> */
+	   so nothing has to be done 				   <5> */
 
 	/* similarly, if new width is bigger than colns_shown - horz_posn,
 	   we can decrease horz_posn to show more columns */
-	if (new_width > wd->colns_shown - wd->horz_posn) {	// <4>
+	if (new_width > wd->colns_shown - wd->horz_posn) {	// <6>
 		wd->horz_posn -= new_width - (wd->colns_shown - wd->horz_posn);
 		if (wd->horz_posn < 0) wd->horz_posn = 0;
 	}
 
-	wind_set (wd->handle, WF_CURRXYWH, 			// <5>
+	wind_set (wd->handle, WF_CURRXYWH, 			// <7>
 		  msg_buf[4], msg_buf[5], msg_buf[6], msg_buf[7]);
+
+	if (changed) {						// <8>
+		GRECT rec;
+		
+		wind_get (wd->handle, WF_WORKXYWH,
+			  &rec.g_x, &rec.g_y, &rec.g_w, &rec.g_h);
+		do_redraw (wd, &rec);
+	}
 }
 ----
-<1> +new_height+ and +new_width+ are the number of characters that will fit 
+<1> Introduce a flag to indicate if the top or side of display has changed.
+<2> +new_height+ and +new_width+ are the number of characters that will fit 
     vertically and horizontally in the new window size.
-<2> If the height has increased, we can show more lines, and so reduce the 
+<3> If the height has increased, we can show more lines, and so reduce the 
     number of lines off the top of the window.
-<3> If the height has decreased, we leave the top line where it is.
-<4> Similarly, alter the left column only if the window has got wider.
-<5> Setting the new window size will trigger a redraw event, updating the 
-    display and sliders, if required.
+<4> Set the flag to trigger an update, as the top of the display has moved.
+<5> If the height has decreased, we leave the top line where it is.
+<6> Similarly, alter the left column only if the window has got wider.
+<7> Setting the new window size will trigger a redraw event, updating the 
+    new part of the display and sliders, if required.
+<8> Request a redraw of the entire window.
 
 === Slider Events
 
@@ -1302,7 +1335,7 @@ void do_uppage (struct win_data * wd) {
 
 We could, in theory, treat UPLINE in an identical manner.  Instead of changing 
 +wd->vert_posn+ by a page of text, we would change it by 1.  The only 
-aesthetic problem with that is that it makes the display flicker: there is a
+aesthetic problem is that it makes the display flicker: there is a
 better technique, which gives smooth scrolling.  The better technique _copies_ 
 the unchanged, existing image down by one line, and then simply redraws the new 
 exposed line.
@@ -1370,8 +1403,8 @@ also +do_arrow+.
 
 This version includes all the functions required for handling the sliders.  As
 can be seen by comparing versions 4 and 5, the code for the sliders dominates
-the final program: version 4 has 238 lines of code, and version 5 has 544 lines,
-more than double the size. 
+the final program: version 4 has approximately 240 lines of code, whereas 
+version 5 has around 550 lines, more than double the size. 
 
 
 == Multi-Window Programming
@@ -1539,14 +1572,14 @@ to info as GEM will use your pointer and not make a copy.  Length in GEM is
 restricted to 80 characters (although most AES replacements extend this).
 
 
-== Additional Events
+== Additional Events: Features of TOS 4.0
 
 So far, I have kept my treatment of GEM programming at a level which 
-would suit all Atari computers, from the Atari ST running TOS 1.04 to 
-powerful clones such as the Firebee running Mint/XaAES.  The later versions 
-of AES do, however, support additional events and features which are worth 
-including in your programs, if you wish them to run on the more powerful 
-systems.  
+would suit all Atari GEM platforms, from the Atari ST running 
+TOS 1.04 to powerful clones such as the Firebee running Mint/XaAES.  
+The later versions of AES do, however, support additional events and features 
+which are worth including in your programs, if you wish them to run on the 
+more powerful systems.  
 
 This list is a very incomplete summary of some events I have started 
 including in my GEM programs:
@@ -1568,7 +1601,8 @@ including in my GEM programs:
 3. WM_ONTOP: If another window is closed which leaves your window on top, this 
    message is sent to your application.  This is useful in circumstances when 
    you want to update some displayed information based on the current top 
-   window.
+   window.  (Sokoban uses this to update enabled menu items for the current
+   top window.)
 
 4. WM_BOTTOMED: A single click on the window title in Mint/XaAES sends 
    the window back in the window list.  To support this, include the following 
@@ -1608,6 +1642,9 @@ update: when a move is made, this flag is +MOVE+.  The drawing code for
 the position will then only update the parts of the window related to that 
 last move.  Such refinements are necessary to prevent your application 
 flickering too much, due to constant updates.
+
+Sokoban also provides an example of +evnt_multi+, as the program responds 
+to window events, as above, but also mouse and keyboard events.
 
 
 == License
