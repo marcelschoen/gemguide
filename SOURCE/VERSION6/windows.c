@@ -45,10 +45,10 @@ char * poem2[] = {
   "Or emptied some dull opiate to the drains",
   "One minute past, and Lethe-wards had sunk:",
   "'Tis not through envy of thy happy lot,",
-  "But being too happy in thine happiness,—",
+  "But being too happy in thine happiness,",
   "That thou, light-winged Dryad of the trees",
   "In some melodious plot",
-  "Of beechen green, and shadows numberless,".
+  "Of beechen green, and shadows numberless,",
   "Singest of summer in full-throated ease.",
   "                           - John Keats",
   0
@@ -105,7 +105,7 @@ void start_program (void) {
 	wind_get (0, WF_WORKXYWH, &fullx, &fully, &fullw, &fullh);
 
 	/* 1. set up and open our first window */
-	wd1.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
+	wd1.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER|UPARROW|DNARROW|VSLIDE|LFARROW|RTARROW|HSLIDE, fullx, fully, fullw, fullh);
 	wind_set (wd1.handle, WF_NAME, "Example: Version 6 - Blake", 0, 0);
 	wind_open (wd1.handle, fullx, fully, 300, 200);
 	wd1.poem = poem1;
@@ -116,7 +116,7 @@ void start_program (void) {
 	vst_point (app_handle, 11, &dum, &dum, &wd1.cell_w, &wd1.cell_h);
 
 	/* set up and open our second window */
-	wd2.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
+	wd2.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER|UPARROW|DNARROW|VSLIDE|LFARROW|RTARROW|HSLIDE, fullx, fully, fullw, fullh);
 	wind_set (wd2.handle, WF_NAME, "Example: Version 6 - Keats", 0, 0);
 	wind_open (wd2.handle, fullx, fully+30, 300, 200);
 	wd2.poem = poem2;
@@ -130,7 +130,7 @@ void start_program (void) {
 	wd1.next = &wd2;
 
 	/* set up and open our third window */
-	wd3.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
+	wd3.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER|UPARROW|DNARROW|VSLIDE|LFARROW|RTARROW|HSLIDE, fullx, fully, fullw, fullh);
 	wind_set (wd3.handle, WF_NAME, "Example: Version 6 - Wordsworth", 0, 0);
 	wind_open (wd3.handle, fullx, fully+60, 300, 200);
 	wd3.poem = poem3;
@@ -308,6 +308,7 @@ void do_redraw (struct win_data * wd, GRECT * rec1) {
    */
 void do_sized (struct win_data * wd, int * msg_buf) {
 	int new_height, new_width;
+	bool changed;
 
 	if (msg_buf[6] < MIN_WIDTH) msg_buf[6] = MIN_WIDTH;
 	if (msg_buf[7] < MIN_HEIGHT) msg_buf[7] = MIN_HEIGHT;
@@ -320,6 +321,7 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 	if (new_height > wd->lines_shown - wd->vert_posn) {
 		wd->vert_posn -= new_height - (wd->lines_shown - wd->vert_posn);
 		if (wd->vert_posn < 0) wd->vert_posn = 0;
+		changed = true;
 	}
 	/* if new height is less than lines_shown - vert_posn,
 	   we leave vertical position in same place,
@@ -330,9 +332,17 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 	if (new_width > wd->colns_shown - wd->horz_posn) {
 		wd->horz_posn -= new_width - (wd->colns_shown - wd->horz_posn);
 		if (wd->horz_posn < 0) wd->horz_posn = 0;
+		changed = true;
 	}
 
 	wind_set (wd->handle, WF_CURRXYWH, msg_buf[4], msg_buf[5], msg_buf[6], msg_buf[7]);
+
+	if (changed) {
+		GRECT rec;
+
+		wind_get (wd->handle, WF_WORKXYWH, &rec.g_x, &rec.g_y, &rec.g_w, &rec.g_h);
+		do_redraw (wd, &rec);
+	}
 }
 
 /* Called when vertical slider moved. */
