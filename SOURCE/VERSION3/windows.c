@@ -39,7 +39,8 @@ void open_vwork (void) {
 	int dum;
 
 	app_handle = graf_handle (&dum, &dum, &dum, &dum);
-	for (i = 0; i < 10; work_in[i++] = 1);
+	work_in[0] = 2 + Getrez ();
+	for (i = 1; i < 10; work_in[i++] = 1);
 	work_in[10] = 2;
 	v_opnvwk (work_in, &app_handle, work_out);
 }

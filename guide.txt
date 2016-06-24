@@ -6,10 +6,9 @@ This document is a guide to writing GEM applications in C using
 AHCC.  I will walk through the implementation of a sample GEM 
 application, in full detail.  The program initially displays a 
 single window containing some text.  We build the program through 
-various versions, and end up with a multi-window system using 
-sliders and other window widgets.  So far, I look only at the 
-window handling code: other aspects of GEM programming will be 
-covered in a later update.
+various versions to create a multi-window system using 
+sliders and other window widgets.  The program is developed further 
+to use menus, file dialogs and other features of AES.
 
 Why AHCC?  Although there are many options for C programming on the Atari
 platform, AHCC is kept up to date and runs natively on (all?) Atari computers
@@ -34,6 +33,12 @@ https://github.com/petercrlane/cmanship).  In particular:
 * C89 syntax (especially function signatures)
 * changes to headers and library calls for compatibility
 
+AES has also changed in some respects, particularly if you are 
+running MINT with XaAES or MyAES, with new messages and possibilities 
+not available on the Atari ST.  For example, it is possible to use menus 
+internal to a window, and also create toolbars at the top of windows.
+I shall discuss some of these features in later sections.
+
 After working through CManShip, I tried writing a few different 
 programs, and, partly through trial and error, and partly with the 
 help of contributors at http://atari-forum.com, I now feel able to put 
@@ -47,7 +52,9 @@ of skepticism, and let me know of any errors and improvements.
 I will assume you already know the C programming language (in particular, 
 C89), and also that you know what a GEM program is.  However, I shall 
 try to cover what you need to write in C to get a GEM program working 
-and interacting with the operating system.
+and interacting with the operating system.  I will not say much 
+about creating an RSC file - you can refer to your own program's 
+documentation for that.  (I use ResourceMaster 3.65.)
 
 This guide is not a complete reference to GEM programming through 
 AES / VDI. Apart from CManShip, I use the following references for 
@@ -74,6 +81,11 @@ https://github.com/petercrlane/gemguide
 == AHCC Setup and Project Files
 
 AHCC can be downloaded from http://members.chello.nl/h.robbers/
+
+There is no installation step: simply unzip and copy to a convenient 
+location on your hard disk.  I have a desktop shortcut to the AHCC 
+program, so it is always accessible.
+
 
 === Version 5.3 Issues
 
@@ -141,6 +153,15 @@ explaining this):
 . ahccstdi.lib (68000 with floating point support missing from printf/scanf)
 . ahccstfi.lib (Firebee / Coldfire without FPU, may be compatible with Falcon)
 
+=== Settings
+
+When AHCC starts, it is initially set to use the libraries in "sinclude".  
+These use a 'short int' data type.  
+
+Before trying the programs here, set AHCC to use the libraries in "include".
+Do this by opening the Config dialog (Alt-O), finding the "Options for the 
+compiler", and checking the line for "-i include".
+
 
 == Overview of a GEM Program
 
@@ -170,11 +191,24 @@ preserving its own contents, and not disturbing the neighbours.  Each
 successive version is provided complete in the source code for this guide, and
 can be compiled using AHCC.
 
-(Although there is a lot of code required for managing GEM, with a little 
+After getting to grips with windows, we move onto an easier aspect of GEM 
+programming: menus.  Menus are defined in the program's RSC file, and all we 
+need to do is respond to a message indicating they have been selected.  In
+this section, we will also look at how to respond to keyboard commands, so 
+we can use keyboard shortcuts to menu items.
+
+We then move on to dialog boxes.  The main issue with 
+dialog boxes is displaying them, and then retrieving any data the user has 
+input. Dialog boxes are the only place you find widgets such as buttons, text 
+fields and labels (unless you are using an advanced AES permitting toolbars,
+for which see a later section).  Again, dialog boxes are defined in the 
+program's RSC file.
+
+NOTE: Although there is a lot of code required for managing GEM, with a little 
 discipline it is possible to preserve most of this code between projects.  The 
 examples here follow my own practice in managing this.  I shall try to make 
 clear which parts of the examples are GEM requirements, and which are my own 
-suggestions.)
+suggestions.
 
 The different components of a GEM window:
 
@@ -193,6 +227,9 @@ A GEM program typically does the following:
 . exit the application
 
 == Getting Started: Opening a Window
+
+In this first section, we see how to start up a GEM program, and display 
+the most simple of windows. This is the "hello world" of GEM programming.
 
 I find it convenient to separate the code into three sets of source code:
 
@@ -238,7 +275,7 @@ void main (int argc, char ** argv) {
 <6> And finally our application exits.
 
 Functions (2) and (3) must be provided by ourselves. (2) is a standard process 
-to open a work station, as shown below.  An important part of this is to 
+to open a workstation, as shown below.  An important part of this is to 
 create a reference to the screen, through the call to +graf_handle+; this 
 reference is stored in the variable +app_handle+.
 
@@ -249,16 +286,17 @@ void open_vwork (void) {
 	int dum;
 
 	app_handle = graf_handle (&dum, &dum, &dum, &dum);	// <1>
-	for (i = 0; i < 10; work_in[i++] = 1);			// <2>
+	work_in[0] = 2 + Getrez ();				// <2>
+	for (i = 1; i < 10; work_in[i++] = 1);	
 	work_in[10] = 2;
 	v_opnvwk (work_in, &app_handle, work_out);		// <3>
 }
 ----
-<1> Sets up the screen output, and saves the reference.  We don't need 
+<1> Set up the screen output, and saves the reference.  We don't need 
     the values of the other parameters (which relate to the size of text
     in the screen).
-<2> Sets up the values for declaring a virtual work station.
-<3> Finally creates the virtual workstation, for our application.
+<2> Set up the values for declaring a virtual workstation.
+<3> Finally create the virtual workstation, for our application.
 
 
 === Opening a window
@@ -294,6 +332,7 @@ appears in "windows.c", in the +start_program+ function.
 struct win_data wd;
 int fullx, fully, fullw, fullh;
 
+/* 1. set up and open our window *
 wind_get (0, WF_WORKXYWH, &fullx, &fully, &fullw, &fullh);		// <1>
 wd.handle = wind_create (NAME|CLOSER, fullx, fully, fullw, fullh);	// <2>
 wind_set (wd.handle, WF_NAME, "Example: Version 1", 0, 0);		// <3>
@@ -316,10 +355,10 @@ wd.text = "Hello";							// <5>
 <5> Set up some application-specific data for our window: in this case, the 
     text to display in the window.
 
-Note, on, for example, an Atari ST, it is possible for GEM to run out of windows.
+TIP: On, for example, an Atari ST, it is possible for GEM to run out of windows.
 If this happens, the handle retrieved from +wind_create+ will be negative.
 You should, between (2) and (3), check if +wd.handle+ is negative, and warn 
-the user if so.  We won't worry about this in our example program.
+the user if so.  We won't worry about this in our example programs.
     
 The functions +wind_set+ and +wind_get+ will be met frequently as you work 
 with windows.  They both take a window handle as their first parameter, and 
@@ -1572,7 +1611,380 @@ to info as GEM will use your pointer and not make a copy.  Length in GEM is
 restricted to 80 characters (although most AES replacements extend this).
 
 
-== Additional Events: Features of TOS 4.0
+== Menus
+
+The menu bar is a convenient way of interacting with our programs.  A menu 
+bar is defined within an RSC file, which is a file containing all the 
+resources, such as menu bars and dialogs, used by our program.  The RSC 
+file is created by an external program: there are several available, but 
+I use Resource Master 3.65.  When started, our program must load in its 
+RSC file, and access the required information to show menu bars and dialogs.
+
+Menus, in GEM, typically appear at the top of the screen.  The menu bar 
+can contain several menus.  Each menu has a title, and can contain a number 
+of menu items.  Each menu item may have an associated key command.  Also, 
+menu items may be disabled (meaning they cannot be selected), or have a 
+check mark showing.  Menus can also contain separator items, which are 
+horizontal lines to divide the menu into groups.  The image below 
+illustrates these elements:
+
+IMAGE OF MENU
+
+Menus also provide access to the desk accessories.  The convention is that 
+the first menu item, on the left, refers to the program name, and contains 
+a single item, which opens a dialog showing information about the program.
+This first menu item is followed by a separator, and then a list of desk 
+accessories (or "Clients" in Mint).
+
+Interactions with the menu are simple: when a menu item is clicked on with 
+the mouse, a message is sent to the program indicating that the menu has been 
+used.  This message contains information about the menu item that was clicked.
+
+=== The RSC and rsh files
+
+Before our program can use a menu, we need to build the menu in a resource 
+construction program (such as Resource Master) and save it as a RSC file.  
+Our program also needs a way of associating the clicked on menu item with 
+the information sent in the message event.  This information is contained 
+in a set of symbol definitions, saved by the resource constructon program 
+in a .rsh file (or equivalent).
+
+TIP: It is standard practice to name our .RSC file using the program name.  
+Do _not_ use your program name for a .C source file.  For example, if your 
+program is 'sokoban', we will have 'sokoban.rsc'.  Do _not_ name one of 
+your source files 'sokoban.c'.  ResourceMaster, for example, will export 
+a .c file if you choose to build a desk accessory, and this will overwrite 
+any source files of the same name.  For safety, only use your program name 
+as the .PRG name in your project file, and as the .RSC name.
+
+As we create each menu item, we associate with that menu item a symbol, 
+used to name it.  When we export the C header file, we get a file containing
+symbol definitions for each menu item.  For Resource Master, the output looks
+something like the following.  Note that the symbol 'ABOUT' attached to the 
+'About' menu item has been prefixed with the symbol for the main menu itself.
+
+----
+ /*  Resource C-Header-file v1.95 for ResourceMaster v2.06&up by ARDISOFT  */
+
+#define MAIN_MENU 0  /* menu 					<1> */
+#define MAIN_MENU_ABOUT 9  /* STRING in tree MAIN_MENU 		<2> */
+----
+<1> The symbol for the main menu itself.
+<2> The symbol for the 'About' item on the main menu.
+
+Before we can use the RSC file, we need to include the .rsh file in our 
+source code.  We do this by adding a line in "windows.h", for example:
+
+[source,c]
+----
+#include "version7.rsh"
+----
+
+=== Showing a Menu
+
+Before we can show the menu, our program must open the .RSC file.  We must 
+check the file has opened successfully before proceeding.  Having done 
+this, we can extract the menu bar and show it.  Once our program has 
+finished, we should remove the menu bar.  Our +start_program+ function is 
+accordingly modified, as follows:
+
+[source,c]
+----
+void start_program (void) {
+	/* DECLARE LOCAL VARIABLES */
+
+	if (!rsrc_load ("\VERSION7.rsc")) {			// <1>
+		form_alert (1, "[1][version7 .rsc file missing!][OK]");
+	} else {
+		OBJECT * menu_addr;				// <2>
+
+		/* 1. install the menu bar */
+		rsrc_gaddr (R_TREE, MAIN_MENU, &menu_addr);	// <3>
+		menu_bar (menu_addr, true);			// <4>
+
+		/* 2. OPEN WINDOWS ETC */
+		
+		/* 3. process events for our window */
+		event_loop (menu_addr, &wd1);			// <5>
+
+		/* 4. remove the menu bar */
+		menu_bar (menu_addr, false);			// <6>
+		
+		/* 5. CLOSE WINDOWS AND CLEAN UP */
+	}
+}
+----
+<1> Attempt to load the RSC file.  If it fails to load, display a dialog, 
+    and then abort the program.
+<2> Create a local variable to hold the address of the menu.
+<3> Retrieve the menu from the RSC data.  We provide the name of the 
+    menu +MAIN_MENU+, and the address to store the menu's address.
+<4> Display the menu bar for our application.
+<5> +menu_addr+ is also passed to the +event_loop+.
+<6> Remove the menu bar, which frees up its resources.
+
+NOTE: +rsrc_load+ likes the filename in capital letters preceded with a 
+backslash character.
+
+=== Responding to Menu Events
+
+Menu events are passed to our program using the +MN_SELECTED+ event type.
++msg_buf[4]+ contains the reference to the actual menu selected.  These 
+references are defined in the .rsh file.
+
+Within the +event_loop+ function switch function, we add the following case
+to respond to menu events:
+
+[source,c]
+----
+	case MN_SELECTED: /* menu selection */
+        	do_menu (wd, msg_buf[4]); 			// <1>
+		/* return menu to normal */
+        	menu_tnormal (menu_addr, msg_buf[3], true);	// <2>
+		break;
+----
+<1> Call out to +do_menu+ with the selected menu item.
+<2> Once the menu event has been dealt with, return the menu display to normal.
+
+Notice how GEM highlights the selected menu item whilst the event is carried 
+out.  Our program is responsible for returning the item to normal once it has 
+finished.
+
+The +do_menu+ function simply dispatches to a function to deal with each 
+of the possible menu items.
+
+[source,c]
+----
+void do_menu (struct win_data * wd, int menu_item) {
+	switch (menu_item) {
+
+		case MAIN_MENU_ABOUT:		// <1>
+			do_about ();
+			break;
+	}
+}
+----
+<1> The case statement uses the name for the menu item as defined in the 
+    RSC file.
+
+The +do_about+ function displays a simple information dialog - we discuss 
+dialogs in a later section.
+
+How about the QUIT option?  When the user selects quit, we don't have to 
+do anything except exit the event loop.  This is easily done in the +while+ 
+condition:
+
+[source,c]
+----
+	} while (!(msg_buf[0] == MN_SELECTED && msg_buf[4] == MAIN_MENU_QUIT)); // <1>
+----
+<1> Loop terminates when it has a +MN_SELECTED+ event which is 'Quit'.
+
+=== Controlling the Menu Items
+
+An individual menu item can be enabled or disabled.  A disabled menu item 
+cannot be selected, and is shown greyed out on the menu bar.  Whether a 
+menu item is enabled or not is controlled using:
+
+[source,c]
+----
+menu_ienable (menu_addr, OBJECT, flag);
+----
+
+where
+
+* +menu_addr+ is the address of the menu;
+* +OBJECT+ is the reference to the menu item; and
+* +flag+ is true to enable or false to disable the menu item.
+
+Each menu item can also show an optional check (or 'tick') mark 
+beside it.  The code to control this takes the same parameters as 
++menu_ienable+:
+
+[source,c]
+----
+menu_icheck (menu_addr, OBJECT, flag);
+----
+
+Finally, it is possible to change the text showing on a menu item, 
+with the call:
+
+[source,c]
+----
+menu_text (menu_addr, OBJECT, str); // <1>
+----
+<1> +str+ must be a statically allocated string.  Remember to keep 
+    two spaces at the start of the string.
+
+The sample program does not have a good reason to use checked menu items
+or to disable items, so there is a menu provided just to try out these 
+options.  One menu item controls whether the other is enabled or not, and 
+shows a check mark if it is enabled.  For good measure, the altered menu item
+also has its text changed.  We store the state for this as 
+a global variable, +menu_state+; in a real application the state will likely 
+depend on the top-most window's contents, and so be stored within +win_data+.
+
+The action is handled directly in +do_menu+:
+
+[source,c]
+----
+	case MAIN_MENU_SWITCH:
+		menu_state = !menu_state;				// <1>
+		menu_icheck (menu_addr, MAIN_MENU_SWITCH, menu_state);	// <2>
+		menu_ienable (menu_addr, MAIN_MENU_DUMMY, menu_state);	// <3>
+		menu_text (menu_addr, MAIN_MENU_DUMMY, 			// <4>
+			   (menu_state ? "  Enabled" : "   Disabled"));
+		break;
+----
+<1> Invert the state.
+<2> Set the status of the SWITCH menu item's check sign.
+<3> Set the enabled/disabled status of the DUMMY menu item.
+<4> Change the text on the DUMMY menu item.
+
+
+=== Responding to Keyboard Events
+
+This is an appropriate time to extend the range of events we can respond to.
+Important menu items should contain keyboard shortcuts, for users who prefer 
+not to take their hands from the keyboard.  Keyboard events are sent to our 
+program just like other events, but we must listen for them.  To do so, we 
+must change our event loop to handle multiple event types.
+
+Any GEM program may produce one or more of a range of different event types.
+These include:
+
+* AES messages (as we have handled so far)
+* Mouse events: information on the mouse position and which buttons are clicked
+* Timer events: an event triggered at regular time intervals
+* Keyboard events: triggered when the user types on the keyboard
+
+Although GEM provides separate event listeners for these different types, in 
+any real GEM program multiple event types will be needed.  For example, any
+GEM program will need to respond to AES messages, mouse events and the 
+keyboard, at a minimum; to do this, we use a multiple-event listener.
+
+There are two ways to handle multiple event types.  There is the _traditional_
+way, which uses a call to +event_multi+.  This requires setting up several 
+internal variables to store any required return values.  AHCC offers an 
+alternative way, which uses a call to +EvntMulti+, using a single structure 
+to hold all return values.  The advantage of +event_multi+ is conformance 
+to previous practice.  The advantage of +EvntMulti+ is a simpler calling 
+routine; the AHCC description also claims improved performance.  We shall 
+cover both ways.
+
+
+==== Traditional event_multi
+
+The traditional +event_multi+ function is an extension of the +event_mesag+ 
+we have been using so far.  It offers the advantage of being documented in 
+the Atari literature, and will be familiar to most programmers.  However, 
+it does require care in defining and presenting different reference variables 
+to hold various return values.
+
+
+==== AHCC EvntMulti
+
+AHCC's custom +EvntMulti+ offers the advantage of a simpler calling routine.
+Instead of defining separate variables for the possible return values, we 
+simply define one instance of +EVENT+, and pass its address to +EvntMulti+.
+The return values and the +msgbuf+ are all then stored within our instance 
+of +EVENT+.  (The only small downside is that the slot names are not so 
+intuitive.)
+
+
+=== Sample Program: Version 7
+
+In version 7 of the program, we include a menu.  The menu provides an 
+'about' dialog, a way to quit the program, and a menu to select which poem 
+to show.  
+
+The menu was created in Resource Master, and saved into the RSC file.  The 
+C header was exported, creating the .rsh file.  The .rsh file is needed for 
+compiling, and the RSC file for running the program.
+
+The 'Quit' option may be triggered via the menu or by keyboard, so this version
+uses multiple events in the event loop; two event loops are provided, one 
+for the traditional approach, and one using AHCC's custom one.  The 'About' 
+option displays a simple dialog box: this uses the built in +form_alert+ call 
+to construct a dialog. I explain more about this and dialogs in general in a 
+later section.
+
+Finally, this version allows us to open and close poems as we wish.  So the 
+window creation code has been changed to allow for a more dynamic set of 
+windows, and the window close code has been changed, to only close the selected
+window, not exit the program.  The program is only exited with the 'QUIT' 
+option.
+
+
+== Sokoban: A More Complex Example
+
+As a more complex example of multi-window programming, my Sokoban 
+implementation may be worth a look.  
+The source code is at https://github.com/petercrlane/sokoban
+
+If you review that source code, you will find many things similar to the 
+code in this document, however, some things will be different.  This 
+document was written, in part, to simplify and unify the code I have 
+for GEM handling in my programs, and I haven't put all the
+simplifications back.  Also, in a larger application, there are simply 
+more things to handle, which add a layer of complexity.
+
+In particular, note how I manage different window types: there is one 
+window showing a list of levels, and other windows showing the levels 
+in the game.  I have a slot in +win_data+ called +window_type+, and this 
+is set to +LEVELS+ or +POSITION+ when the window is created.  Within 
++draw_interior+ I now switch to the appropriate calling code, depending 
+on the window type.
+
+Additionally, in some situations, such as when a move is made, not all 
+of the window needs to be redrawn.  I also have a flag for the type of 
+update: when a move is made, this flag is +MOVE+.  The drawing code for 
+the position will then only update the parts of the window related to that 
+last move.  Such refinements are necessary to prevent your application 
+flickering too much, due to constant updates.
+
+Sokoban also provides an example of +evnt_multi+, as the program responds 
+to window events, as above, but also mouse and keyboard events.  
+
+
+== File Selectors
+
+In this section we look at the file selector dialog.  This is an important 
+and useful dialog, enabling the user to select a filename to save or open.
+
+=== Sample Program: Version 8
+
+Version 8 of the program now includes options to save or open a file stored 
+on disk as a text file.  
+
+
+== Dialogs
+
+something about dialogs
+
+=== Form Alerts
+
+built in dialogs
+
+=== Through RSC
+
+boxes you build yourself
+
+=== Sample Program: Temperature Converter
+
+This sample program is a standalone program.  It provides a simple 
+dialog which converts temperatures from fahrenheit to celsius.  It 
+illustrates how to access information in text fields, and how to 
+respond to button clicks.
+
+
+For an example of using dialogs within a larger program, the 
+BibFind program may be of interest.  This provides a 'Find' dialog 
+box, which returns a string to search to the calling program.
+BibFind source code is available at https://github.com/petercrlane/bibfind
+
+
+== Selected Features of TOS 4.0+
 
 So far, I have kept my treatment of GEM programming at a level which 
 would suit all Atari GEM platforms, from the Atari ST running 
@@ -1580,6 +1992,14 @@ TOS 1.04 to powerful clones such as the Firebee running Mint/XaAES.
 The later versions of AES do, however, support additional events and features 
 which are worth including in your programs, if you wish them to run on the 
 more powerful systems.  
+
+TIP: Some of these features also only work with certain versions of AES, 
+e.g. XaAES or MyAES.  You should consult documentation specific to your 
+target platform before using any of the following.  A call to +appl_getinfo+ 
+can be used within your program to determine what features are available.
+Refer to toshyp for further details.
+
+=== Additional Events
 
 This list is a very incomplete summary of some events I have started 
 including in my GEM programs:
@@ -1616,37 +2036,198 @@ case WM_BOTTOMED:
 ----
 <1> Set the given window handle to the bottom.
 
-== Sokoban: A More Complex Example
+=== Toolbars
 
-As a more complex example of multi-window programming, my Sokoban 
-implementation may be worth a look.  
-The source code is at https://github.com/petercrlane/sokoban
+Using some widgets in a toolbar.
 
-If you review that source code, you will find many things similar to the 
-code in this document, however, some things will be different.  This 
-document was written, in part, to simplify and unify the code I have 
-for GEM handling in my programs, and I haven't put all the
-simplifications back.  Also, in a larger application, there are simply 
-more things to handle, which add a layer of complexity.
+[source,c]
+----
+wind_set(window_handle, WF_TOOLBAR, toolbar_object);
+----
 
-In particular, note how I manage different window types: there is one 
-window showing a list of levels, and other windows showing the levels 
-in the game.  I have a slot in +win_data+ called +window_type+, and this 
-is set to +LEVELS+ or +POSITION+ when the window is created.  Within 
-+draw_interior+ I now switch to the appropriate calling code, depending 
-on the window type.
+Events are of type +WM_TOOLBAR+.
 
-Additionally, in some situations, such as when a move is made, not all 
-of the window needs to be redrawn.  I also have a flag for the type of 
-update: when a move is made, this flag is +MOVE+.  The drawing code for 
-the position will then only update the parts of the window related to that 
-last move.  Such refinements are necessary to prevent your application 
-flickering too much, due to constant updates.
+Care is needed to account for toolbar when calculating window work areas.
 
-Sokoban also provides an example of +evnt_multi+, as the program responds 
-to window events, as above, but also mouse and keyboard events.
+=== Internal Menus
 
+Menus within a window.  Supported in XaAES only.
 
+[source,c]
+----
+wind_set (window_handle, WF_MENU, menu_address);
+----
+
+== Scrap Library
+
+The scrap library is GEM's answer to the cross-application clipboard. 
+
+First the bad news: many Atari programs do not use the GEM scrap board.
+For example, some word processors such as Marcel and Protext use their 
+own custom clipboards, and so do not support copy and pasting information 
+to or from other applications.  This is also true of our favourite IDE, AHCC.
+
+Second, the even worse news: as with most features of GEM, the scrap library 
+leaves _everything_ to the programmer.  The scrap library is nothing more 
+than a file stored in a known folder.  This folder is identified by calling
++scrap_read+, which retrieves the current scrap folder.  In addition, as 
+different desktop environments may provide paths to the scrap library/clipboard,
+we need to check for these.  If there is no current scrap folder, then our 
+program must create it.  
+
+Once the scrap folder is located, we either read from a file named "SCRAP", 
+if we are, for example, pasting the last piece of copied information.  
+Alternative, we may write to a file named "SCRAP" if we are copying some 
+information.  The file extension for the "SCRAP" file is set appropriate 
+to the data we are saving, e.g. ".TXT" for text data.  When writing a 
+file, we need to first delete any existing files named "SCRAP.*" in the 
+scrap folder.
+
+One final refinement: if we save a file into the scrap folder, we should 
+let other applications and the desktop know, so they can update their 
+displays or information about the scrap library.
+
+=== Using the scrap library
+
+I will simply give two functions here, which firstly find the location of 
+the scrap folder, and secondly update any other users of the scrap folder 
+when we have changed it.
+
+The following function requires a reference to some allocated space, and 
+will place into that space a full path name to a file "SCRAP.TXT" in the 
+scrap folder.  If the scrap folder does not already exist, it will be 
+created.
+
+[source,c]
+----
+void get_clipboard_file (char * scrap_path) {
+	char * env_scrap_path = NULL;
+	char dirname[PATH_MAX];
+	struct ffblk * cur_file;
+
+	/* check possible environment variables 		   <1> */
+	shel_envrn (&env_scrap_path, "CLIPBOARD=");
+	if (env_scrap_path == NULL) {
+		shel_envrn (&env_scrap_path, "CLIPBRD=");
+	}
+	if (env_scrap_path == NULL) {
+		shel_envrn (&env_scrap_path, "SCRAPDIR=");
+	}
+
+	if (env_scrap_path == NULL) {
+		/* if not found, use the scrap_path result */
+		scrp_read (scrap_path);				// <2>
+	} else {
+		/* copy env_scrap_path into scrap_path */
+		strcpy (scrap_path, env_scrap_path);		// <3>
+	}
+
+	/* check we have a valid path, adding \ to end if needed */
+	if (scrap_path[strlen(scrap_path)-1] != '\\') {
+		if (strlen(scrap_path) < PATH_MAX - 2) {
+			int end = strlen(scrap_path)-1;
+			scrap_path[end] = '\\';
+			scrap_path[end+1] = 0;
+		}
+	}
+
+	/* set up clipboard folder if one does not exist 	   <4> */
+	if (strlen (scrap_path) == 0) {
+		int curr_drive = Dgetdrv ();
+		/* cannot modify an in-place string, so copy it:
+		   this caused a strange error, where menu would not
+		   reappear when re-focussing the application.
+		 */
+		char * folder = strdup("A:\\CLIPBRD\\");
+
+		folder[0] += curr_drive; /* set to current drive */
+		Dcreate (folder);        /* make sure it exists 	<5> */	
+		scrp_write (folder);     /* write the clipboard folder 	<6> */
+		scrp_read (scrap_path);  /* read it back in */
+		free (folder);
+	}
+
+	/* delete any SCRAP.* files currently in the scrap directory */
+	strcpy (dirname, scrap_path);
+	strcat (dirname, "SCRAP.*");
+	if (findfirst (dirname, cur_file, 664) == 0) {		// <7>
+		do {
+			char * filename = malloc (sizeof(char) * PATH_MAX);
+			if (strcmp (cur_file->ff_name, ".") == 0) continue;
+			if (strcmp (cur_file->ff_name, "..") == 0) continue;
+			strcpy (filename, scrap_path);
+			strcat (filename, cur_file->ff_name);
+			remove (filename);
+		} while (findnext (cur_file) == 0);
+	}
+	/* Write data as plain text */
+	strcat (scrap_path, "SCRAP.TXT");			// <8>
+}
+----
+<1> First, look in some standard environment variables for an existing 
+    path to a clipboard.
+<2> If one is not found, use +scrap_read+ to see if GEM already has a 
+    record of the scrap folder.
+<3> If one was found, use that one by copying it to +scrap_path+.
+<4> If no existing path has been found, then we need to create the 
+    scrap folder.
+<5> Create folder "CLIPBRD" in the current drive.
+<6> And set it as the scrap folder using +scrap_write+, reading this 
+    back into +scrap_path+ using +scrap_read+.
+<7> Use +findfirst+ and +findnext+ to loop through all the "SCRAP.*" files 
+    existing in the scrap folder, to delete them.
+<8> Finally, append the name of the scrap file to the path.
+
+The following code can be used to update the clipboard observers, given 
+the path of the scrap folder.  The message types and +appl_search+ 
+functions are only suitable for later versions of TOS 4.0+, so don't use 
+this function on TOS 2.06 or earlier on your Atari ST.
+
+[source,c]
+----
+void update_clipboard_observers (char * path) {
+	short msg[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+	char name[PATH_MAX];
+	int id, type;
+
+	if (strlen(path) < 3) return; /* if too short to be a path */
+
+	/* update desktop 					<1> */
+	msg[0] = SH_WDRAW;
+	msg[1] = app_handle;
+	msg[3] = toupper(path[0]) - 'A';		      // <2>
+	if (appl_search (APP_DESK, name, &type, &id) == 1) {  // <3>
+		appl_write (id, 0, msg);		      // <4>
+	}
+
+	/* inform other applications 				<5> */
+	msg[0] = SC_CHANGED;
+	msg[3] = 0x0002; /* updated a text file */
+	if (appl_search (APP_FIRST, name, &type, &id) == 1) { // <6>
+		do {
+			appl_write (id, 0, msg);	      // <7>
+		} while (appl_search (APP_NEXT, name, &type, &id) == 1); // <8>
+	}
+}
+----
+<1> If the desktop is showing the scrap folder, then we want it to refresh
+    its display.  
+<2> The third argument gives the drive number: 0 is A, 2 is C etc.
+<3> Finds the id reference for the desktop.
+<4> Sends the desktop the message to update its display of the given drive.
+<5> Other applications may be dealing with the scrap folder, so we let them 
+    know the scrap folder has changed.
+<6> Use +appl_search+ to locate the first application.
+<7> Send the message to the current application.
+<8> Loop with the next application, until all applications have been called.
+
+=== Examples
+
+Of my own programs, only BibFind uses the scrap library: http://peterlane.info/bibfind.html
+
+For a sophisticated use of the scrap library, see GEMClip:
+
+[appendix]
 == License
 
 This guide is copyright (c) 2016, Peter Lane, and is provided under 

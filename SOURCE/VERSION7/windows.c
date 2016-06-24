@@ -1,33 +1,11 @@
 #include "windows.h"
 
-void event_loop (struct win_data * wd);
+/* global variable to store state for dummy menu item */
+bool menu_state = true;
 
-void do_arrow (struct win_data * wd,int arrow);
-void do_fulled (struct win_data * wd);
-void do_redraw (struct win_data * wd, GRECT * rec1);
-void do_sized (struct win_data * wd, int * msg_buf);
-void do_vslide (struct win_data * wd, int posn);
-void do_hslide (struct win_data * wd, int posn);
+/* some text to display in the windows */
 
-void do_uppage (struct win_data * wd);
-void do_dnpage (struct win_data * wd);
-void do_upline (struct win_data * wd);
-void do_dnline (struct win_data * wd);
-void do_lfpage (struct win_data * wd);
-void do_rtpage (struct win_data * wd);
-void do_lfline (struct win_data * wd);
-void do_rtline (struct win_data * wd);
-
-void draw_interior (struct win_data * wd, GRECT clip);
-
-void set_clip (bool flag, GRECT rec);
-bool is_full_window (struct win_data * wd);
-int slider_size (int num_available, int num_shown);
-int slider_posn (int num_available, int num_shown, int offset);
-void update_sliders (struct win_data * wd);
-
-/* some text to display in the window */
-char * poem[] = {
+char * poem1[] = {
 	"    The Tiger",
 	"",
 	"Tiger! Tiger! burning bright",
@@ -64,38 +42,107 @@ char * poem[] = {
 	0
 };
 
+char * poem2[] = {
+  "My heart aches, and a drowsy numbness pains",
+  "My sense, as though of hemlock I had drunk,",
+  "Or emptied some dull opiate to the drains",
+  "One minute past, and Lethe-wards had sunk:",
+  "'Tis not through envy of thy happy lot,",
+  "But being too happy in thine happiness,",
+  "That thou, light-winged Dryad of the trees",
+  "In some melodious plot",
+  "Of beechen green, and shadows numberless,",
+  "Singest of summer in full-throated ease.",
+  "                           - John Keats",
+  0
+};
+
+char * poem3[] = {
+  "I wandered lonely as a cloud",
+  "That floats on high o'er vales and hills,",
+  "When all at once I saw a crowd,",
+  "A host, of golden daffodils;",
+  "Beside the lake, beneath the trees,",
+  "Fluttering and dancing in the breeze.",
+  "              - William Wordsworth",
+  0
+};
+
+void event_loop (OBJECT * menu_addr, struct win_data * wd);
+
+void do_menu (OBJECT * menu_addr, struct win_data * wd, int menu_item);
+void do_about (void);
+void do_show (struct win_data * wd, char ** poem, char * title);
+
+void do_arrow (struct win_data * wd,int arrow);
+void do_closed (struct win_data * wd, int handle);
+void do_fulled (struct win_data * wd);
+void do_redraw (struct win_data * wd, GRECT * rec1);
+void do_sized (struct win_data * wd, int * msg_buf);
+void do_vslide (struct win_data * wd, int posn);
+void do_hslide (struct win_data * wd, int posn);
+
+void do_uppage (struct win_data * wd);
+void do_dnpage (struct win_data * wd);
+void do_upline (struct win_data * wd);
+void do_dnline (struct win_data * wd);
+void do_lfpage (struct win_data * wd);
+void do_rtpage (struct win_data * wd);
+void do_lfline (struct win_data * wd);
+void do_rtline (struct win_data * wd);
+
+void draw_interior (struct win_data * wd, GRECT clip);
+
+struct win_data * get_win_data (struct win_data * wd, int handle);
+void set_clip (bool flag, GRECT rec);
+bool is_full_window (struct win_data * wd);
+int slider_size (int num_available, int num_shown);
+int slider_posn (int num_available, int num_shown, int offset);
+void update_sliders (struct win_data * wd);
+
 /* ------- The main functions to create and drive a GUI ------- */
 
 /* open window and enter event loop */
 void start_program (void) {
 	struct win_data wd;
-	int fullx, fully, fullw, fullh;
-	int dum;
 
-	graf_mouse (ARROW, 0L); /* ensure mouse is an arrow */
+	if (!rsrc_load ("\VERSION7.rsc")) {
+		form_alert (1, "[1][version7 .rsc file missing!][OK]");
+	} else {
+		OBJECT * menu_addr;
 
-	/* 1. set up and open our window */
-	wind_get (0, WF_WORKXYWH, &fullx, &fully, &fullw, &fullh);
-	wd.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER|UPARROW|DNARROW|VSLIDE|LFARROW|RTARROW|HSLIDE, fullx, fully, fullw, fullh);
-	wind_set (wd.handle, WF_NAME, "Example: Version 5", 0, 0);
-	wind_open (wd.handle, fullx, fully, 300, 200);
+		/* 1. install the menu bar */
+		rsrc_gaddr (R_TREE, MAIN_MENU, &menu_addr);
+		menu_bar (menu_addr, true);
 
-	/* set up application-specific data */
-	wd.poem = poem;
+		graf_mouse (ARROW, 0L); /* ensure mouse is an arrow */
 
-	/* initialise position in display */
-	wd.horz_posn = 0;
-	wd.vert_posn = 0;
+		/* 2. set up a dummy wd, to act as base of window list */
+		wd.handle = -1;
+		wd.next = NULL;
+		/* and add a window to it, so user has something to look at */
+		do_show (&wd, poem1, "Blake");
 
-	/* initialise text size */
-	vst_point (app_handle, 11, &dum, &dum, &wd.cell_w, &wd.cell_h);
+		/* 3. process events for our window */
+		event_loop (menu_addr, &wd);
 
-	/* 2. process events for our window */
-	event_loop (&wd);
+		/* 4. remove the menu bar */
+		menu_bar (menu_addr, false);
 
-	/* 3. close and remove our window */
-	wind_close (wd.handle);
-	wind_delete (wd.handle);
+		/* 5. close and delete any open windows */
+		{
+			struct win_data * curr = &wd;
+			struct win_data * prev;
+
+			while (curr != NULL) {
+				wind_close (curr->handle);
+				wind_delete (curr->handle);
+				prev = curr;
+				curr = curr->next;
+				free (prev);
+			}
+		}
+	}
 }
 
 /* Standard code to set up GEM arrays and open work area.
@@ -113,56 +160,139 @@ void open_vwork (void) {
 }
 
 /* Process all events for our program */
-void event_loop (struct win_data * wd) {
-	int msg_buf[8];
+void event_loop (OBJECT * menu_addr, struct win_data * wd) {
+	EVENT ev;
+
+	ev.ev_mflags = MU_MESAG | MU_KEYBD;
 
 	do {
-		evnt_mesag (msg_buf);
+		int event_type = EvntMulti (&ev);
 
-		switch (msg_buf[0]) {
-
-			case WM_TOPPED:
-				wind_set (msg_buf[3], WF_TOP, 0, 0);
-				break;
-
-			case WM_MOVED:
-				wind_set (msg_buf[3], WF_CURRXYWH, msg_buf[4],
-				msg_buf[5], msg_buf[6], msg_buf[7]);
-				break;
-
-			case WM_FULLED:
-				do_fulled (wd);
-				break;
-
-			case WM_SIZED:
-				do_sized (wd, msg_buf);
-				break;
-
-			case WM_REDRAW:
-				do_redraw (wd, (GRECT *)&msg_buf[4]);
-				break;
-
-			case WM_ARROWED:
-				wind_set (msg_buf[3], WF_TOP, 0, 0); /* bring to the top */
-				do_arrow (wd, msg_buf[4]);
-				break;
-
-			case WM_VSLID:
-				wind_set (msg_buf[3], WF_TOP, 0, 0);
-				do_vslide (wd, msg_buf[4]);
-				break;
-
-			case WM_HSLID:
-				wind_set (msg_buf[3], WF_TOP, 0, 0);
-				do_hslide (wd, msg_buf[4]);
-				break;
-
+		/* -- check for and handle keyboard events */
+		if (event_type & MU_KEYBD) {
+			if (ev.ev_mkreturn == 0x1011) { /* code for ctrl-Q */
+				break; /* exit the do-while loop */
+			}
 		}
-	} while (msg_buf[0] != WM_CLOSED);
 
+		/* -- check for and handle menu events */
+		if (event_type & MU_MESAG) {
+			switch (ev.ev_mmgpbuf[0]) {
+
+				case MN_SELECTED: /* menu selection */
+					do_menu (menu_addr, wd, ev.ev_mmgpbuf[4]);
+					/* return menu to normal */
+					menu_tnormal (menu_addr, ev.ev_mmgpbuf[3], true);
+					break;
+
+				case WM_TOPPED:
+					wind_set (ev.ev_mmgpbuf[3], WF_TOP, 0, 0);
+					break;
+
+				case WM_MOVED:
+					wind_set (ev.ev_mmgpbuf[3], WF_CURRXYWH, ev.ev_mmgpbuf[4],
+						  ev.ev_mmgpbuf[5], ev.ev_mmgpbuf[6], ev.ev_mmgpbuf[7]);
+					break;
+
+				case WM_CLOSED:
+					do_closed (wd, ev.ev_mmgpbuf[3]);
+					break;
+
+				case WM_FULLED:
+					do_fulled (get_win_data(wd, ev.ev_mmgpbuf[3]));
+					break;
+
+				case WM_SIZED:
+					do_sized (get_win_data(wd, ev.ev_mmgpbuf[3]), ev.ev_mmgpbuf);
+					break;
+
+				case WM_REDRAW:
+					do_redraw (get_win_data(wd, ev.ev_mmgpbuf[3]), (GRECT *)&ev.ev_mmgpbuf[4]);
+					break;
+
+				case WM_ARROWED:
+					wind_set (ev.ev_mmgpbuf[3], WF_TOP, 0, 0); /* bring to the top */
+					do_arrow (get_win_data(wd, ev.ev_mmgpbuf[3]), ev.ev_mmgpbuf[4]);
+					break;
+
+				case WM_VSLID:
+					wind_set (ev.ev_mmgpbuf[3], WF_TOP, 0, 0);
+					do_vslide (get_win_data(wd, ev.ev_mmgpbuf[3]), ev.ev_mmgpbuf[4]);
+					break;
+
+				case WM_HSLID:
+					wind_set (ev.ev_mmgpbuf[3], WF_TOP, 0, 0);
+					do_hslide (get_win_data(wd, ev.ev_mmgpbuf[3]), ev.ev_mmgpbuf[4]);
+					break;
+
+			}
+		}
+	} while ((MN_SELECTED != ev.ev_mmgpbuf[0]) || (MAIN_MENU_QUIT != ev.ev_mmgpbuf[4]));
 }
 
 /* ---------- The following functions respond to events ---------- */
+
+/* Called when the user selects a menu item */
+void do_menu (OBJECT * menu_addr, struct win_data * wd, int menu_item) {
+	switch (menu_item) {
+
+		case MAIN_MENU_ABOUT:
+			do_about ();
+			break;
+
+		case MAIN_MENU_SWITCH:
+			menu_state = !menu_state;
+			menu_icheck (menu_addr, MAIN_MENU_SWITCH, menu_state);
+			menu_ienable (menu_addr, MAIN_MENU_DUMMY, menu_state);
+			menu_text (menu_addr, MAIN_MENU_DUMMY,
+				   (menu_state ? "  Enabled" : "  Disabled"));
+			break;
+
+		case MAIN_MENU_BLAKE:
+			do_show (wd, poem1, "Blake");
+			break;
+
+		case MAIN_MENU_KEATS:
+			do_show (wd, poem2, "Keats");
+			break;
+
+		case MAIN_MENU_WORDSWORTH:
+			do_show (wd, poem3, "Wordsworth");
+			break;
+	}
+}
+
+/* Show a simple about dialog box */
+void do_about (void) {
+	form_alert (1, "[1][Some information about GEM Guide][OK]");
+}
+
+/* Open a new window with given information, and add to end of window list */
+void do_show (struct win_data * wd, char ** poem, char * title) {
+	struct win_data * new_wd = malloc (sizeof(struct win_data));
+	int dum, fullx, fully, fullw, fullh;
+
+	wind_get (0, WF_WORKXYWH, &fullx, &fully, &fullw, &fullh);
+
+	new_wd->handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER|UPARROW|DNARROW|VSLIDE|LFARROW|RTARROW|HSLIDE, fullx, fully, fullw, fullh);
+	if (new_wd->handle < 0) {
+		form_alert (1, "[3][Too many open windows|Could not open new display][OK]");
+	} else {
+		wind_set (new_wd->handle, WF_NAME, title, 0, 0);
+		wind_open (new_wd->handle, fullx, fully, 300, 200);
+		new_wd->poem = poem;
+		new_wd->next = NULL;
+
+		new_wd->horz_posn = 0;
+		new_wd->vert_posn = 0;
+		vst_point (app_handle, 11, &dum, &dum, &new_wd->cell_w, &new_wd->cell_h);
+
+		/* add new window to end of list */
+		while (wd->next != NULL) wd = wd->next;
+		wd->next = new_wd;
+	}
+}
+
 
 /* Respond to an arrow event by determining the type of arrow event, and
    calling appropriate function.
@@ -200,6 +330,33 @@ void do_arrow (struct win_data * wd, int arrow) {
 		case WA_RTLINE:
 			do_rtline (wd);
 			break;
+	}
+}
+
+/* Called when a window is closed.
+   Closes given window, and remove it from the window list.
+ */
+void do_closed (struct win_data * wd, int handle) {
+	struct win_data * curr = wd->next; /* point to second item, first real window */
+	struct win_data * prev = wd;       /* first item always the dummy head of list */
+
+	/* walk along the list until we find the window to close, remembering the
+	   previous item in the list */
+	while (curr != NULL && curr->handle != handle) {
+		prev = curr;
+		curr = curr->next;
+	}
+
+	if (curr != NULL) { /* check, in case something went wrong */
+		/* remove the item from the list */
+		prev->next = curr->next;
+
+		/* delete the window */
+		wind_close (curr->handle);
+		wind_delete (curr->handle);
+
+		/* free its memory allocation */
+		free (curr);
 	}
 }
 
@@ -253,6 +410,7 @@ void do_redraw (struct win_data * wd, GRECT * rec1) {
    */
 void do_sized (struct win_data * wd, int * msg_buf) {
 	int new_height, new_width;
+	bool changed;
 
 	if (msg_buf[6] < MIN_WIDTH) msg_buf[6] = MIN_WIDTH;
 	if (msg_buf[7] < MIN_HEIGHT) msg_buf[7] = MIN_HEIGHT;
@@ -265,6 +423,7 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 	if (new_height > wd->lines_shown - wd->vert_posn) {
 		wd->vert_posn -= new_height - (wd->lines_shown - wd->vert_posn);
 		if (wd->vert_posn < 0) wd->vert_posn = 0;
+		changed = true;
 	}
 	/* if new height is less than lines_shown - vert_posn,
 	   we leave vertical position in same place,
@@ -275,9 +434,17 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 	if (new_width > wd->colns_shown - wd->horz_posn) {
 		wd->horz_posn -= new_width - (wd->colns_shown - wd->horz_posn);
 		if (wd->horz_posn < 0) wd->horz_posn = 0;
+		changed = true;
 	}
 
 	wind_set (wd->handle, WF_CURRXYWH, msg_buf[4], msg_buf[5], msg_buf[6], msg_buf[7]);
+
+	if (changed) {
+		GRECT rec;
+
+		wind_get (wd->handle, WF_WORKXYWH, &rec.g_x, &rec.g_y, &rec.g_w, &rec.g_h);
+		do_redraw (wd, &rec);
+	}
 }
 
 /* Called when vertical slider moved. */
@@ -540,6 +707,15 @@ void draw_interior (struct win_data * wd, GRECT clip) {
 }
 
 /* ------- The following functions are for calculations ------- */
+
+/* Find window data for given handle in the list */
+struct win_data * get_win_data (struct win_data * wd, int handle) {
+	while (wd != NULL) {
+		if (wd->handle == handle) break;
+		wd = wd->next;
+	}
+	return wd;
+}
 
 /* sets/unsets clipping rectangle in VDI */
 void set_clip (bool flag, GRECT rec) {

@@ -1,0 +1,13 @@
+; This is Version 7 of the GEM Guide example
+;
+version7.prg
+=
+ahcstart.o
+
+eg_draw.c
+main.c
+windows.c
+
+ahccstdi.lib
+ahccgem.lib
+gemf.lib
