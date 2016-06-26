@@ -312,34 +312,35 @@ void open_vwork (void) {
 <2> Erzeugen der Werte um eine virtuelle "workstation" zu deklarieren.
 <3> Schliesslich erzeugen der virtuellen "workstation" für unsere Applikation.
 
+=== Ein Fenster öffnen
 
-=== Opening a window
-
-Each window in our application will display some information to the user.  A 
-window may respond to many events: it can be moved around the screen, be made 
-smaller or larger, have its sliders moved, and must always keep its contents up 
-to date.  There are, therefore, many pieces of information which a window must 
-be aware of.  For this reason, I use a +struct+ to store all data relevant to 
-a single window.  My basic +win_data+ is as follows:
+Jedes Fenster in unserer Applikation wird dem Benutzer irgendwelche Informationen
+anzeigen. Ein Fenster kann auf viele Events reagieren: Es kann auf dem Bildschirm
+herum bewegt werden, vergrössert oder verkleinert werden oder seine Scrollbar-Slider
+werden verschoben, und es muss die jederzeit seinen Inhalt aktuell halten. Es gibt
+also mehrere Teilinformationen, die ein Fenster berücksichtigen muss. Aus diesem
+Grunde benutze ich eine +struct+ um alle relevanten Daten zu einem einzelnen
+Fenster zu speichern. Mein Basis +win_data+ sieht so aus:
 
 [source,c]
 ----
 struct win_data {
-	int handle;	/* identifying handle of the window    <1> */
-	char * text;	/* text to display in window           <2> */
+	int handle;	    /* handle des Fensters    <1> */
+	char * text;	/* text der im Fenster angezeigt wird      <2> */
 };
 ----
-<1> Every window has a unique +handle+ to identify it.
-<2> Application-specific data, used to control what is shown in window.
+<1> Jedes Fenster hat einen eindeutigen +handle+ um es zu referenzieren.
+<2> Applikations-spezifische Daten, zur Anzeige im Fenster.
 
-As we proceed through this guide, the contents of +win_data+ will expand.  In
-addition, your application will have various data that are relevant to the
-window.  This should also be stored or referred to in +win_data+: for now, we
-use +text+ as our example application's specific data.
+Während wir durch diesen Guide voranschreiten, wird der Inhalt von +win_data+
+erweitert werden. Zusätzlich wird Ihre Applikation diverse eigene Daten enthalten die
+relevant sind fürs Fenster; diese sollten ebenfalls in +win_data+ gespeichert
+werden: Für den Moment benutzen wir +text+ als unser Beispiel für
+Applikations-spezifische Daten.
 
-Creating a window requires setting up an instance of +win_data+ with the 
-relevant data, creating a window, and then showing it.  The following code
-appears in "windows.c", in the +start_program+ function.
+Ein Fenster zu erzeugen setzt voraus, dass eine Instanz von +win_data+ mit den
+relevanten Daten erzeugt wird, und dann ein Fenster, welches dann angezeigt wird.
+Der folgende Code erscheint in "windows.c", in der +start_program+ Funktion.
 
 [source,c]
 ----
