@@ -92,14 +92,12 @@ Es gibt keinen Installations-Schritt: Einfach entpacken und an einen
 passenden Ort auf der Harddisk kopieren. Ich habe einen Desktop Shortcut
 für das AHCC Programm, damit es jederzeit zugreifbar ist.
 
+=== Probleme mit Version 5.3
 
-=== Version 5.3 Issues
-
-We will be using the include libraries for AHCC (not the short int 
-versions, in sinclude).  Unfortunately, as at version 5.3, some of 
-the constants we require are not in "include/aes.h". You need to 
-copy the values from "sinclude/aes.h".  These missing constants 
-include:
+Wir werden die include Libraries für AHCC benutzen (nicht die short-int
+Variante in sinclude). Unglücklicherweise fehlen in Version 5.3 einige
+der von uns benötigten Konstanten in "include/aes.h". Sie müssen diese
+Konstanten kopieren von "sinclude/aes.h". Die fehlenden Konstanten sind:
 
 ----
 #define WM_SHADED 22360		// <1>
@@ -111,18 +109,18 @@ include:
 #define FL3DMASK 0x0600
 #define SUBMENU 0x0800
 ----
-<1> These two events are used in TOS 4.0 programs.
-<2> These flags are needed if you create any dialogs in a resource file.
+<1> Diese beiden Events werden in TOS 4.0 Programmen verwendet.
+<2> Diese Flags werden benötigt um Dialoge in einer Resource-Datei zu erzeugen.
 
-If you get "missing constant" messages from AHCC, first see if they are missing 
-from "include/aes.h".
+Falls Sie "missing constant" Fehlermeldungen von AHCC erhalten, prüfen Sie zuerst
+ob diese Konstanten tatsächlich in "include/aes.h" fehlen.
 
-=== Project Files
+=== Projekt Dateien
 
-Structure of a project file:
+Struktur einer Projekt-Datei:
 
 ----
-; some comment
+; ein Kommentar
 PROGRAM.PRG       ; <1>
 .C [-7 -iinclude] ; <2>
 =                 ; <3>
@@ -134,130 +132,138 @@ ahccstdi.lib      ; <6>
 ahccgem.lib
 gemf.lib
 ----
-<1> Name of output program to compile.
-<2> Optional set of parameters for the compilation.
-<3> Separator between output definition and input files.
-<4> The standard startup code, for the linker.
-<5> Your program's .c files are listed.
-<6> Usually three libraries: these vary depending on the platform you target.
+<1> Name des resultierenden compilierten Programmes.
+<2> Optionale Liste von Parametern für die Compilierung.
+<3> Trenner zwischen Output-Definition und Input-Dateien.
+<4> Der Standard Startup-Code für den Linker.
+<5> Liste der .c-Dateien Ihres Programmes.
+<6> Normalerweise drei Libraries: Diese variieren, abhängig von der Ziel-Plattform.
 
-The usual things to change in the above project are:
+Was üblicherweise in dem Projekt angepasst werden muss:
 
-* line (1) gives the name of your program.
-* line (2), the target platform.  -7 means the Firebee / Coldfire, -2 for 
-  68020, and nothing for the Atari ST / 68000.  
-* line (5), expand this with all the .c files in your project.
-* line (6), change this and the subsequence lines for different Atari targets.
-  e.g. for the Firebee with floating point, use ahccstdf.lib and ahccgemf.lib
-  The libs shown are suitable for targeting the Atari ST / 68000.
+* Zeile (1) legt den Namen Ihres Programmes fest.
+* Zeile (2) die Ziel-Plattform. -7 bedeutet Firebee / Coldfire, -2 für
+  68020, und gar nichts für den Atari ST / 68000.
+* Zeile (5) enthält alle C-Quelldateien Ihres Projektes.
+* Zeile (6) diese und die folgenden Zeilen müssen für verschiedene Atari Plattformen
+  angepasst werden; zum Beispiel müssen für die FireBee mit Fliesskomma-Support
+  ahccstdf.lib und ahccgemf.lib angegeben werden. Die oben gezeigten Libraries
+  passen zum Ausgabeziel Atari ST / 68000.
 
-The standard library comes in four versions (thanks to Eero Tamminen for 
-explaining this):
+Die Standard-Library kommt in vier Versionen (Dank an Eero Tamminen
+für seine Erklärungen hierzu):
 
 . ahccstdf.lib (Firebee / Coldfire)
 . ahccstd.lib (680x0 + FPU)
-. ahccstdi.lib (68000 with floating point support missing from printf/scanf)
-. ahccstfi.lib (Firebee / Coldfire without FPU, may be compatible with Falcon)
+. ahccstdi.lib (68000 mit Fliesskomma-Support, der in printf/scanf fehlt)
+. ahccstfi.lib (Firebee / Coldfire ohne FPU, könnte kompatibel sein mit Falcon)
 
-=== Settings
+=== Einstellungen
 
-When AHCC starts, it is initially set to use the libraries in "sinclude".  
-These use a 'short int' data type.  
+Wenn AHCC gestartet wird, benutzt es gemäss Voreinstellung die Libraries in
+"sinclude". Diese verwenden einen "short int" Datentyp.
 
-Before trying the programs here, set AHCC to use the libraries in "include".
-Do this by opening the Config dialog (Alt-O), finding the "Options for the 
-compiler", and checking the line for "-i include".
+Bevor Sie die Programme hier ausprobieren, konfigurieren sie AHCC so dass es
+die Libraries in "include" verwendet. Öffnen Sie dazu den "Config" Dialog
+(Alt-O), suchen Sie "Options for the compiler" und setzen Sie die Checkbox
+für die Zeile "-i include".
 
+== Übersicht eines GEM Programmes
 
-== Overview of a GEM Program
+Wenn Sie vertraut sind mit GUI Programmierung auf modernen Computern, bitte
+vergessen Sie alles, was Sie wissen. Programmierung in GEM ist primitiv. Mit
+modernen Toolkits bekommt man alle Arten von Widgets, von Buttons über
+Spinboxes bis hin zu kompletten Text-Editoren mit Support für Copy-/Paste
+und scrollbaren Anzeige-Bereichen. Widgets können mit Layout Managern
+in komplexen Arrangements kombiniert werden; Multi-Threading wird benutzt
+um die Anzeige zu aktualisieren während das Programm mit der Berechnung
+irgendeines Resultates beschäftigt ist.
 
-If you are familiar with GUI programming on a more modern computer, kindly 
-forget everything you know.  Programming in GEM is primitive.  With a modern 
-toolkit, you have many kinds of widgets, from buttons and spinboxes, to 
-complete text editors supporting copy and paste and scrollable display areas. 
-Widgets can be combined with layout managers into complex arrangements.  
-Multi-threading can be used to keep the display refreshed while your program 
-is busy computing some results. 
+Nichts davon ist in GEM verfügbar.
 
-None of this is available in GEM.
+In GEM gibt es essentiell drei Elemente: Menüs, Dialog-Boxen (welche mehrere
+"Widgets" enthalten können) und Fenster (Windows). Der Teil, der am meisten
+Zeit beanspruchen wird, ist die Handhabung eines Fensters zu erlernen:
+Ein Fenster ist ein Teil des Screens in welchem unsere Applikation freie
+Hand hat. Sie haben totale Kontrolle über den Inhalt des Fensters. Sie
+entscheiden was dort gezeichnet wird, wie das, was gezeichnet wird, reagiert
+wenn der Benutzer den Slider bewegt, und Sie müssen auch sicherstellen das
+das, was Sie im Fenster zeichnen dort bleibt (und nur dort) während Ihr
+Fenster interagiert mit den Fenstern anderer Applikationen (in MINT) oder
+mit Desktop Accessories.
 
-In GEM there are, essentially, three elements: menus, dialog boxes (which can
-contain several "widgets") and windows.  The part that will take most of our time 
-is learning to handle the window: a window is the part of the screen in which 
-your application has free reign.  You have complete control over the contents of 
-the window.  You decide what gets drawn there, how what you draw there responds 
-to the user moving the sliders around, and you must also ensure what you draw in 
-the window remains there (and only there) as your window interacts with the 
-windows of other applications (in MINT) or desk accessories.
+Die folgenden Sektionen werden schrittweise ein GEM Programm aufbauen um den
+Umgang mit Fenstern zu illustrieren. Das Endresultat ist ein Programm welches
+auf alle die erwarteten Fenster-Events reagiert, Scrollbars besitzt und
+friedlich mit anderen Fenstern ko-existiert, während es seinen eigenen Inhalt
+bewahrt, ohne seine Nachbarn zu stören. Jede Version des Beispiels steht mit
+vollständigem Quellcode für diesen Guide zur Verfügung, und kann mit AHCC
+compiliert werden.
 
-The following sections will progressively build up a GEM program to illustrate
-window handling, resulting in a program that responds to all the expected
-window events, has scroll bars, and co-exists happily with other windows,
-preserving its own contents, and not disturbing the neighbours.  Each
-successive version is provided complete in the source code for this guide, and
-can be compiled using AHCC.
+Nachdem wir Fenster in den Griff bekommen haben gehen wir weiter zu einem
+leichteren Aspekt der GEM-Programmierung: Menüs. Menüs sind definiert in der
+RSC-Datei eines Programmes, und alles, was wir tun müssen ist, auf Messages
+zu reagieren die anzeigen, dass ein Menüpunkt angewählt wurde. In diesem
+Abschnitt werden wir auch anschauen wie man auf Tastatur-Befehle reagiert,
+so dass Tastatur-Shortcuts benutzt werden können für Menü-Punkte.
 
-After getting to grips with windows, we move onto an easier aspect of GEM 
-programming: menus.  Menus are defined in the program's RSC file, and all we 
-need to do is respond to a message indicating they have been selected.  In
-this section, we will also look at how to respond to keyboard commands, so 
-we can use keyboard shortcuts to menu items.
+Danach gehen wir weiter zu Dialog-Boxen. Das Hauptproblem mit Dialog-Boxen ist
+sie anzuzeigen, und dann auf die Daten zuzugreifen die der Benutzer eingegeben
+hat. Nur in Dialog-Boxen finden sich Widgets wie Buttons, Text-Felder und Labels
+(ausser Sie benutzen ein spezielles, erweitertes AES welches Toolbars erlaubt,
+was wir in einem späteren Abschnitt anschauen). Auch Dialog-Boxen werden
+in der RSC-Datei des Programmes definiert.
 
-We then move on to dialog boxes.  The main issue with 
-dialog boxes is displaying them, and then retrieving any data the user has 
-input. Dialog boxes are the only place you find widgets such as buttons, text 
-fields and labels (unless you are using an advanced AES permitting toolbars,
-for which see a later section).  Again, dialog boxes are defined in the 
-program's RSC file.
+HINWEIS: Obwohl der Umgang mit GEM viel Code erfordert, ist es mit etwas
+Disziplin möglich, einen grossen Teil dieses Codes zwischen mehreren Projekten
+wiederzuverwenden. Die Beispiele hier folgen meiner eigenen Praxis diesbezüglich.
+Ich werde versuchen klarzumachen, welche Teile der Beispiele zwingend von
+GEM vorausgesetzt werden, und welches meine eigenen Empfehlungen sind.
 
-NOTE: Although there is a lot of code required for managing GEM, with a little 
-discipline it is possible to preserve most of this code between projects.  The 
-examples here follow my own practice in managing this.  I shall try to make 
-clear which parts of the examples are GEM requirements, and which are my own 
-suggestions.
-
-The different components of a GEM window:
+Die verschiedenen Komponenten eines GEM Fensters:
 
 image::images/info.jpg[width=300]
 
-A GEM program typically does the following:
+Ein GEM Programm macht typischerweise das folgende:
 
-. initialise the application
-. open a VDI screen, and obtain a handle to access it
-. optionally open an RSC file and set up the menu
-. open an initial window or windows
-. enter the event loop, responding to all window / other events until 
-  the application is quit
-. free any resources
-. free the VDI screen
-. exit the application
+. Die Applikation initialisieren
+. Einen VDI-Screen öffnen und einen Handle dazu erlangen, um darauf zuzugreifen
+. Optional eine RSC-Datei öffnen und ein Menü erzeugen
+. Ein erstes Fenster oder mehrere Fenster öffnen
+. Den Event-Loop starten und auf alle Fenster oder anderen Events antworten bis
+  die Applikation beendet wird
+. Alle Resourcen freigeben
+. Den VDI-Screen freigeben
+. Die Applikation beenden
 
-== Getting Started: Opening a Window
+== Beginn: Ein Fenster öffnen
 
-In this first section, we see how to start up a GEM program, and display 
-the most simple of windows. This is the "hello world" of GEM programming.
+In dieser ersten Sektion sehen wir, wie man ein GEM Programm startet und
+das einfachste aller Fenster anzeigt. Dies entspricht dem "hello world"
+der GEM Programmierung.
 
-I find it convenient to separate the code into three sets of source code:
+Ich finde es nützlich, den Code in drei separate Bereiche aufzuteilen:
 
-. main.c contains the +main+ function, and handles all the setup code before
-  calling your program.
-. windows.c contains all the standard GEM stuff, and functions to respond to 
-  GEM events.
-. eg_draw.c contains the specific drawing code for this application.
+. main.c enthält die +main+ Funktion und all den vorher erwähnten Setup-Code
+  bevor das eigentliche Programm ausgeführt wird.
+. windows.c enthält all den Standard GEM Code, sowie Funktionen um auf
+  GEM Events zu reagieren.
+. eg_draw.c enthält den spezifischen Code um den Inhalt des Fensters für diese
+  Applikation zu zeichnen.
 
-The header file "windows.h" is also important.  Here we define some variables 
-which AES requires, and also our own window data structure (see below).
+Die Header-Datei "windows.h" ist ebenfalls wichtig. Hier definieren wir einige
+Variablen die AES benötigt, und auch unsere eigene Fenster Daten-Struktur (siehe unten).
 
 
-=== Starting a GEM Application
+=== Start einer GEM Applikation
 
-We must begin and end our GEM application with some startup and teardown code.
-These register our application with the operating system, and provide a unique 
-reference to identify our application.
+Wir müssen unsere GEM Applikation starten und beenden mit einigem "startup"-
+und "teardown"-Code. Dieser Code registriert unsere Applikation im Operating System
+und stellt eine eindeutige Referenz zur Verfügung, um unsere Applikation zu identifizieren.
 
-I place this code in +main+, with a call out to a function to run our own 
-application (for a complete listing, including header files and variable definitions,
-see the source code which accompanies this guide):
+Ich platziere diesen Code im +main+, mit einem Aufruf einer Funktion um unsere
+eigene Applikation zu starten (für ein vollständiges Listing, inklusive Header-Dateien
+und Variablen-Definitionen, schauen Sie den begleitenden Quellcode zu diesem Guide an):
 
 [source,c]
 ----
@@ -270,20 +276,22 @@ void main (int argc, char ** argv) {
 	appl_exit ();			// <6>
 }
 ----
-<1> This is a built-in AES function, and initialises our application.  It 
-    returns a unique reference for our application, but we won't need it 
-    just yet.
-<2> This function we must provide, and is used to create and open a work
-    space for our program, and store the application handle.
-<3> This function we provide, and is where our program runs.
-<4> After our program has finished, resources are freed.
-<5> Using the application handle from (2), the work space is closed.
-<6> And finally our application exits.
+<1> Dies ist eine AES-eigene Funktion die unsere Applikation initialisiert.
+    Sie gibt eine eindeutige Referenz auf unsere Applikation zurück, die wir
+    aber unmittelbar noch nicht brauchen. Diese Referenz wird nachfolgend
+    "Handle" genannt.
+<2> Diese Funktion müssen wir bereitstellen, und sie wird benutzt um einen
+    "workspace" für unser Programm zu erstellen und zu öffnen, und den
+    Applikations-Handle zu speichern.
+<3> Diese Funktion stellen wird bereit, hier wird unser Programm ausgeführt.
+<4> Nachdem unser Programm beendet wurde, werden Resourcen freigegeben.
+<5> Mittels des Applikations-Handles von (2) wird der "workspace" geschlossen.
+<6> Und schliesslich wird die Applikation beendet.
 
-Functions (2) and (3) must be provided by ourselves. (2) is a standard process 
-to open a workstation, as shown below.  An important part of this is to 
-create a reference to the screen, through the call to +graf_handle+; this 
-reference is stored in the variable +app_handle+.
+Funktionen (2) und (3) müssen wir selber bereitstellen. (2) ist ein Standard
+Prozess um eine "workstation" zu öffnen, wie unten gezeigt. Ein wichtiger
+Punkt hier ist die Erzeugung einer Referenz auf den Screen, durch den Aufruf
+von +graf_handle+; diese Referenz wird gespeichert in der Variable +app_handle+.
 
 [source,c]
 ----
@@ -298,11 +306,11 @@ void open_vwork (void) {
 	v_opnvwk (work_in, &app_handle, work_out);		// <3>
 }
 ----
-<1> Set up the screen output, and saves the reference.  We don't need 
-    the values of the other parameters (which relate to the size of text
-    in the screen).
-<2> Set up the values for declaring a virtual workstation.
-<3> Finally create the virtual workstation, for our application.
+<1> Erzeugt den Ausgabe-Screen und speichert die Referenz. Wir benötigen
+    die Werte der anderen Parameter nicht (welche sich auf die Grösse
+    von Text im Screen beziehen).
+<2> Erzeugen der Werte um eine virtuelle "workstation" zu deklarieren.
+<3> Schliesslich erzeugen der virtuellen "workstation" für unsere Applikation.
 
 
 === Opening a window
