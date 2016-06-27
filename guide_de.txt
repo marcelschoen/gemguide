@@ -514,39 +514,43 @@ und alles sollte funktionieren.
 
 === In einem Bereich zeichnen
 
-Look again at our function +draw_example+: the call to +v_gtext+ does not 
-refer to our window, only the screen.  Our drawing code could, in theory, 
-write anywhere on the screen we want.  However, this would break the illusion 
-of our program providing a window onto some information.  A better solution 
-is to set up a _clip_ area: this is a rectangle we define, so that if our 
-VDI calls go outside that area, they will be clipped to only appear 
-within the given rectangle.  
+Schauen Sie wiederum unsere Funktion +draw_example+ an: Der Aufruf von
++v_gtext+ referenziert nicht unser Fenster, sondern nur den Screen. Unser
+Zeichen-Code könnte theoretisch überall auf dem Screen direkt etwas
+zeichnen. Doch dies würde natürlich die Illusion zerstören, ein Fenster
+zu haben, welches einen Blick auf bestimmte Informationen freigibt.
+Eine bessere Lösung ist es, einen _Clipping_ Bereich festzulegen:
+Dies ist ein Rechteck welches wir definieren, so dass jegliche VDI
+Aufrufe ausserhalb dieses Bereiches automatisch abgeschnitten werden,
+und nur auf den entsprechenden Bereich beschränkt zu sehen sind.
 
-We thus wrap our call to +draw_example+ in a function +draw_interior+, which 
-sets up a clip area and also clears the display of our window for us.  The 
-following +draw_interior+ function does a lot of useful work for us.  First, 
-it hides the mouse, so we don't draw over it.  Second, it sets a clip area 
-(+set_clip+ is defined in "windows.c"), so that all VDI calls will only show 
-within the given rectange.  We then get the dimensions of the working area of 
-our window.  This is the same +wind_get+ call we made before, except now we 
-ask for the working area of our window, instead of the desktop.  The working 
-area will exclude the window boundaries, any scroll bars, etc.
-A call to clear the window and we can then call out to our application's 
-drawing code.  Finally the clipping is turned off, and the mouse reshown.
+Demzufolge packen wir unseren Aufruf von +draw_example+ in eine Funktion +draw_interior+,
+welche den Clipping-Bereich definiert und auch die Anzeige unseres Fensters für uns
+löscht. Die folgende +draw_interior+ Funktion erledigt eine Menge nützlicher
+Dinge für uns. Zuerst versteckt sie die Maus, damit wir nicht darüber zeichnen.
+Zweitens definiert sie den Clipping-Bereich (+set_clip+ ist definiert in "windows.c"),
+so dass alle unsere VDI-Aufrufe nur innerhalb des gegebenen Rechtecks wirksam sind.
+Dann ermitteln wir die Grösse des Arbeitsbereiches unseres Fensters. Dies ist der
+gleiche +wind_get+ Aufruf den wir zuvor gemacht haben, nur dass wir jetzt für
+den Arbeitsbereich unseres Fensters statt des Desktops nachfragen. Der
+Arbeitsbereich schliesst die Fenster-Elemente wie Scrollbars etc. nicht mit ein.
+Ein Aufruf um das Fenster zu leeren, und wir können dann den Code aufrufen, der
+den gewünschten Inhalt zeichnet. Schliesslich wird das Clipping wieder deaktiviert
+und die Maus wieder angezeigt.
 
 [source,c]
 ----
-/* Draw interior of window, within given clipping rectangle */
+/* Zeichnet Fenster-Inhalt innerhalb des Clipping-Bereichs */
 void draw_interior (struct win_data * wd, GRECT clip) {
 	int pxy[4];
-	int wrkx, wrky, wrkw, wrkh; /* some variables describing current working area */
+	int wrkx, wrky, wrkw, wrkh; /* ein paar Variablen die den aktuellen Arbeitsbereich beschreiben */
 
-	/* set up drawing, by hiding mouse and setting clipping on */
+	/* bereitet das zeichnen vor, indem der Mauszeiger versteckt und Clipping aktiviert wird */
 	graf_mouse (M_OFF, 0L);					// <1>
 	set_clip (true, clip);
 	wind_get (wd->handle, WF_WORKXYWH, &wrkx, &wrky, &wrkw, &wrkh);
 
-	/* clears the display */
+	/* loescht das display */
 	vsf_color (app_handle, WHITE);				// <2>
 	pxy[0] = wrkx;
 	pxy[1] = wrky;
@@ -554,65 +558,71 @@ void draw_interior (struct win_data * wd, GRECT clip) {
 	pxy[3] = wrky + wrkh - 1;
 	vr_recfl (app_handle, pxy);
 
-	/* draws our specific code */
+	/* unser spezifischer Code um den Inhalt zu zeichnen */
 	draw_example (app_handle, wd);				// <3>
 
-	/* tidies up */
+	/* aufraeumen */
 	set_clip (false, clip);					// <4>
 	graf_mouse (M_ON, 0L);
 }
 ----
-<1> Hide the mouse, set clipping on, and find the work area.
-<2> Clear the work area.
-<3> Call out to our drawing code.
-<4> Set clipping off, and restore the mouse.
+<1> Versteckt die Maus, aktiviert das Clipping und ermittelt den Arbeitsbereich.
+<2> Löscht den Arbeitsbereich.
+<3> Aufruf unseres Zeichen-Codes.
+<4> Deaktiviert das Clipping wieder und macht den Mauszeiger wieder sichtbar.
 
-=== Updating a Display
+=== Display aktualisieren
 
-One of the technically more complex aspects of handling windows in GEM is 
-the concept of the rectangle list, and how to manage it.  In essence, the 
-idea is very simple.  Assume our program's window is obscured by several 
-windows.  One of these windows is closed.  Our program will be told to 
-redraw the area which was underneath the window which has now closed.  
+Einer der komplexeren Aspekte des Umgangs mit Fenstern in GEM ist das Konzept
+der Rechteck-Listen, und wie man sie managed. Die Grundidee ist sehr einfach.
+Nehmen wir an, das Fenster unseres Programmes ist verdeckt von diversen
+anderen Fenstern. Eines dieser Fenster wird geschlossen. Unser Fenster
+erhält eine Message um den Teilbereich neu zu zeichnen, der sich unter
+dem anderen Fenster befand, welches nun geschlossen wurde.
 
-However, we cannot blindly fill that area with the contents of our 
-window, because there may be _other_ windows partially obscuring this 
-area.  Hence, we must take a look at every other window on the system, 
-find those which are obscuring our window, and make sure we avoid drawing 
-over them.  
+Wir können aber nun nicht einfach diesen Bereich blind mit dem Inhalt
+unseres Fensters füllen, da noch andere Fenster ebenfalls diesen Bereich
+teilweise verdecken könnten. Deshalb müssen wir sämtliche Fenster im
+System anschauen und prüfen, welche unser Fenster verdecken, und
+sicherstellen, dass wir nicht in diese Fenster hinein zeichnen.
 
-For example, consider the following two images.  In the first image, we have 
-three windows,all overlapping each other.  We now close the top window: how 
-should the back window, the one showing the list "Classic 1" etc, be updated?
+Schauen Sie als Beispiel die folgenden zwei Bilder an. Im ersten Bild
+haben wir drei Fenster, die sich alle gegenseitig überlappen. Nun schliessen
+wir das oberste Fenster: Wie soll das hintere Fenster (das welches die Liste
+"Classic 1" anzeigt) aktualisiert werden?
 
 image::images/redraw-1.png[width=300]
 
-The second image shows the scene with the top window closed.  The highlighted
-rectangle indicates the area that needs to be redrawn, and only this area.  If 
-we redraw any other parts of the bottom window, we will overwrite the contents 
-of the window now on top.
+Das zweite Bild zeigt die Szene mit dem obersten Fenster geschlossen. Das
+hervorgehobene Rechteck zeigt den Bereich, der aktualisiert werden muss -
+und nur diesen Bereich. Wenn wir irgendeinen anderen Bereich des unteren
+Fensters neuzeichnen, werden wir Inhalte des darüberliegenden Fensters
+überschreiben.
 
 image::images/redraw-2.png[width=300]
 
-The process to ensure we only update the required areas is called "walking 
-the rectangle list".  Our application receives the total area that was 
-revealed by closing the top window, and which needs updating.  Our 
-application compares that area to the other windows that are obscuring it,
-before locating the highlighted rectangle to draw.
+Der Prozess um sicherzustellen, dass nur der benötigte Bereich aktualisiert
+wird, nennt sich "Rechteck-Liste durchgehen". Unsere Applikation enthält
+den gesamten Bereich der freigelegt wurde durch das Schliessen des oberen
+Fensters, und der aktualisiert werden muss. Unsere Applikation vergleicht
+diesen Bereich mit den anderen Fenstern, die darüber liegen, bevor es das
+hervorgehobene Rechteck ermittelt für die Zeichenoperation.
 
-Walking the rectangle list is controlled by two get operations:
+Die Rechteck-Liste durchgehen geschieht mittels zweier Operationen:
 
-. +wind_get (wd->handle, WF_FIRSTXYWH, ...)+ retrieves the first rectangle
-  relevant to our window, storing the x, y, w, h values in the remaining 
-  reference parameters.
-. +wind_get (wd->handle, WF_NEXTXYWH, ...)+ retrieves the next rectangle,
-  again storing the x, y, w, h values in the remaining reference parameters.
+. +wind_get (wd->handle, WF_FIRSTXYWH, ...)+ ermittelt das erste Rechteck
+  relevant für unser Fenster, wobei dessen x, y, w, h Werte in den
+  verbleibenden Referenz-Parametern gespeichert werden.
+. +wind_get (wd->handle, WF_NEXTXYWH, ...)+ ermittelt das nächste Rechteck,
+  wobei wiederum dessen x, y, w, h Werte in den verbleibenden
+  Referenz-Parametern gespeichert werden.
 
-This continues while the w and h values retrieved are non-zero values: when 
-they are both zero, we have reached the end of the rectangle list.
+Dies geht so weiter solange die erhaltenen w (width / Breite) und h (height / Höhe)
+Werte nicht Null sind: Wenn beide Null (0) sind haben wir das Ende der
+Rechtecks-Liste erreicht.
 
-All we check is whether the rectangles in the list intersect our rectangle 
-to update and, if so, we draw the intersected area.
+Alles was wir prüfen ist, ob die Rechtecke in der Liste unser Rechteck zur
+Aktualisierung überlappen, und falls ja, zeichnen wir den überlappenden Bereich neu.
 
 [source,c]
 ----
