@@ -354,66 +354,70 @@ wind_set (wd.handle, WF_NAME, "Example: Version 1", 0, 0);		// <3>
 wind_open (wd.handle, fullx, fully, 300, 200);				// <4>
 wd.text = "Hello";							// <5>
 ----
-<1> This line finds the current size of the desktop.  The first parameter, 0, 
-    refers to the desktop.  The next, +WF_WORKXYWH+, tells the function which
-    data to get, and the remaining addresses are locations to store the result.
-<2> This line creates the window.  The first parameter defines which parts of 
-    the window to include.  Notice we save the handle in our +wd+ variable.
-    Also, we give the maximum dimensions for the window - in this case, the 
-    size of the desktop.
-<3> Sets the value of +WF_NAME+ in our window: this is the title of the window.
-    The title text must be stored in your program somewhere, as the AES does 
-    not make a copy.
-<4> Finally, open the window on the screen.  The last four parameters define 
-    the x, y position and w, h size of the window.  These do not have to be 
-    the same as the maximum size of the window.
-<5> Set up some application-specific data for our window: in this case, the 
-    text to display in the window.
+<1> Diese Zeile ermittelt die aktuelle Desktop-Grösse. Der erste Parameter, 0,
+    referenziert den Desktop. Der nächste, +WF_WORKXYWH+, legt fest welche Daten
+    die Funktion ermitteln soll, und die verbleibenden Adressen sind die Bereiche
+    in denen die Resultate gespeichert werden.
+<2> Diese Zeile erzeugt das Fenster. Der erste Parameter definiert, welche
+    Elemente das Fenster besitzen soll. Beachten Sie, dass wir den handle in
+    unserer +wd+ Variable speichern. Des weiteren legen wir die maximale Grösse
+    des Fensters fest - in diesem Fall die Grösse des Desktops.
+<3> Setzt den Wert von +WF_NAME+ in unserem Fenster: Dies ist der Titel des
+    Fensters (die Überschrift). Der Titel-Text muss in unserem Programm irgendwo
+    gespeichert werden, da das AES keine Kopie davon macht.
+<4> Zum Schluss wird das Fenster auf dem Screen geöffnet. Die letzten vier
+    Parameter definieren die x- und y-Position, sowie mit w (width / Breite)
+    und h (height / Höhe) die Grösse des Fensters. Diese Werte müssen nicht
+    gleich sein wie die Maximal-Grösse.
+<5> Dann werden noch die Applikations-spezifischen Daten für unser Fenster
+    aufbereitet: In diesem Falle der Text, der im Fenster angezeigt werden soll.
 
-TIP: On, for example, an Atari ST, it is possible for GEM to run out of windows.
-If this happens, the handle retrieved from +wind_create+ will be negative.
-You should, between (2) and (3), check if +wd.handle+ is negative, and warn 
-the user if so.  We won't worry about this in our example programs.
-    
-The functions +wind_set+ and +wind_get+ will be met frequently as you work 
-with windows.  They both take a window handle as their first parameter, and 
-then an identifier for some component/information of that window.  Handle 0 
-is used to refer to the desktop.  
+TIP: Auf einem Atari ST, beispielsweise, ist es möglich, dass GEM irgendwann die
+Fenster ausgehen und es keine neuen mehr öffnen kann. Wenn das passiert, ist der
+von +wind_create+ zurückgegebene Handle negativ. Sie sollten deshalb zwischen
+(2) und (3) prüfen ob +wd.handle+ negativ ist, und den Benutzer in diesem Falle
+warnen. Wir ignorieren dies aber in unseren Beispiel-Programmen.
 
-The identifier refers to different parts of the window.  Some of the values 
-we will use include:
+Die Funktionen +wind_set+ und +wind_get+ werden öfters zu sehen sein wenn Sie
+mit Fenstern arbeiten. Beide verwenden einen Fenster-Handle als ihren ersten
+Parameter, und dann einen Identifier für eine Komponente oder Daten dieses
+Fensters. Handle 0 bedeutet dabei jeweils eine Referenz auf den Desktop.
 
-* WF_NAME : the text in the title of the window
-* WF_INFO : the text in the information line of the window
-* WF_WORKXYWH : the current working area of the window, on which you can draw
-* WF_CURRXYWH : the current size of the window, including its widgets
-* WF_PREVXYWH : the previous size of the window, including its widgets
-* WF_FULLXYWH : the maximum size of the window, including its widgets
-* WF_HSLIDE : the position of the horizontal slider
-* WF_VSLIDE : the position of the vertical slider
-* WF_HSLSIZE : the size of the horizontal slider
-* WF_VSLSIZE : the size of the vertical slider
+Die Identifier beziehen sich auf verschiedene Elemente des Fensters. Ein paar
+der Werte die wir benutzen werden sind:
 
-Notice in +wind_create+ we include the flags +NAME|CLOSER+.  These tell our window 
-to include space for a title, and for a close box.  We set the title through 
-+WF_NAME+, as above. The close box is used to exit the program, and we discuss 
-how this works when we cover the event loop, below.  Windows can contain many 
-parts, and to use them we include them in the list of flags.  Some common flags are:
+* WF_NAME : Der Text im Titel des Fensters
+* WF_INFO : Der Text in der Informations-Zeile des Fensters
+* WF_WORKXYWH : Der aktuelle Arbeitsbereich des Fensters, in welchem gezeichnet wird
+* WF_CURRXYWH : Die aktuelle Fenstergrösse, einschliesslich seiner Widgets
+* WF_PREVXYWH : Die vorherige Fenstergrösse, einschliesslich seiner Widgets
+* WF_FULLXYWH : Die maximale  Fenstergrösse, einschliesslich seiner Widgets
+* WF_HSLIDE : Die Position des horizontal Scrollbar-Sliders
+* WF_VSLIDE : Die Position des vertikalen Scrollbar-Sliders
+* WF_HSLSIZE : Die Grösse des horizontalen Sliders
+* WF_VSLSIZE : Die Grösse des vertikalen Sliders
 
-* NAME : for the title of a window
-* CLOSER : adds a close box
-* FULLER : adds option to make window its maximum size, and restore
-* MOVER : allows window to be moved
-* INFO : an internal information line, for the window
-* SIZER : allows window to be resized
-* UPARROW : shows the up arrow on the vertical scrollbar
-* DNARROW : shows the down arrow on the vertical scrollbar
-* VSLIDE : includes a vertical scrollbar
-* LFARROW : shows the left arrow on the horizontal scrollbar
-* RTARROW : shows the right arrow on the horizontal scrollbar
-* HSLIDE : includes a horizontal scrollbar
+Beachten Sie, dass wir in +wind_create+ die Flags +NAME|CLOSER+ benutzt haben. Diese
+instruieren unser Fenster, Platz für einen Titel und für eine Schliess-Box bereitzustellen.
+Wir setzen dann den Titel durch +WF_NAME+, wie oben. Die Schliess-Box wird benutzt um
+das Programm zu beenden, und wir werden genauer betrachten wie dies funktioniert wenn
+wir den Event-Loop behandeln. Fenster können viele Elemente beinhalten, und um diese zu
+nutzen müssen sie in der Liste von Flags aufgeführt werden. Einige übliche Flags sind:
 
-The function +start_program+ continues as follows:
+* NAME : Für den Titel des Fensters
+* CLOSER : Addiert eine Schliess-Box
+* FULLER : Addiert ein Element um das Fenster zu maximieren und wiederherzustellen
+* MOVER : Erlaubt es, das Fenster zu verschieben
+* INFO : Eine interne Informations-Zeile für das Fenster
+* SIZER : Erlaubt es, die Fenstergrösse zu ändern (re-sizing)
+* UPARROW : Zeigt den Aufwärts-Pfeil der vertikalen Scrollbar
+* DNARROW : Zeigt den Abwärts-Pfeil der vertikalen Scrollbar
+* VSLIDE : Zeigt eine vertikale Scrollbar
+* LFARROW : Zeigt den Links-Pfeil der horizontalen Scrollbar
+* RTARROW : Zeigt den Rechts-Pfeil der horizontalen Scrollbar
+* HSLIDE : Zeigt eine horizontale Scrollbar
+
+Die Funktion +start_program+ geht weiter wie folgt:
 
 [source,c]
 ----
@@ -426,16 +430,16 @@ event_loop (&wd);				// <2>
 wind_close (wd.handle);				// <3>
 wind_delete (wd.handle);			// <4>
 ----
-<1> Draws the content of our window.  (This is only here for version 1.)
-<2> Waits for the user to interact with our program.  Returns when the 
-    user closes the window.
-<3> To tidy up, we first close our window, to remove it from the screen.
-<4> Finally, we delete the window, releasing its handle to be used again.
+<1> Zeichnet den Inhalt unseres Fensters (nur für Version 1).
+<2> Wartet darauf, dass der Benutzer mit unserem Programm interagiert.
+    Endet, wenn der Benutzer das Fenster schliesst.
+<3> Um aufzuräumen schliessen wir zuerst das Fenster und entfernen es dann vom Screen.
+<4> Zum Schluss löschen wir das Fenster und geben seinen Handle frei zur Wiederbenutzung.
     
-=== Displaying some content
+=== Inhalt anzeigen
 
-A function +draw_example+ is used to draw the window contents on the screen.
-Our example simply displays the given text in the window.
+Eine Funktion +draw_example+ zeichnet den Fenster-Inhalt auf den Screen. Unser
+Beispiel zeigt schlicht den gegebenen Text im Fenster.
 
 [source,c]
 ----
@@ -445,24 +449,26 @@ void draw_example (int app_handle, struct win_data * wd) {
 
 }
 ----
-<1> Displays text at the given coordinates on the screen.  Note we use 
-    +app_handle+, referring to the screen, in calling the VDI functions.
+<1> Zeit Text an der gegebenen Koordinate auf dem Screen an. Wichtig:
+    Wir benutzen +app_handle+, welches den Screen referenziert, wenn
+    wir VDI Funktionen aufrufen.
 
 === Event Loop
 
-All GEM programs work in an "event driven" manner.  This means that the 
-program waits for the user or operating system to send it an event: something
-to do.  The program then does what it wants in response to that event, before
-returning to the loop.  For example, clicking on the close icon at the 
-top-left of a window will send a message to our program.  Our program must 
-then do the appropriate thing, in this case, we must close the window and 
-end the program.
+Alle GEM Programme arbeiten "Event"-getrieben. Das bedeutet dass das Programm
+darauf wartet, dass der Benutzer oder das Betriebssystem ihm einen Event schicken,
+um etwas zu tun. Das Programm führt dann die gewünschte Aktion für den Event
+aus, bevor es in den Loop (Schleife) zurückkehrt. Beispiel: Anklicken der
+Schliess-Box links oben im Rahmen des Fensters sendet eine Nachricht (Message)
+an unser Programm. Das Programm muss dann darauf entsprechend reagieren; in
+diesem Falle müssen wir das Fenster schliessen und das Programm beenden.
 
-For the example we will use the function +evnt_mesag+ to obtain events for our
-program.  In any real GEM program, you will use its big brother +evnt_multi+,
-which lets you spot events from the mouse, keyboard or other sources as well as
-those relating to your window.  For the example, to keep things simple, we will
-only need to respond to window events, so we use this call. 
+Für das Beispiel werden wir Events mittels der Funktion +evnt_mesag+ in unserem
+Programm verarbeiten. In einem "richtigen" GEM Programm werden Sie den grossen
+Bruder +evnt_multi+ benutzen, welches erlaubt, Events von der Maus, der Tastatur
+oder anderen Quellen zu verarbeiten, sowie solche für das Fenster. Für das Beispiel
+werden wir der Einfachheit halber nur auf Fenster-Events reagieren, deshalb
+benutzen wir diesen Aufruf.
 
 [source,c]
 ----
@@ -475,36 +481,38 @@ void event_loop (struct win_data * wd) {
 	} while (msg_buf[0] != WM_CLOSED);	// <3>
 }
 ----
-<1> Set up some storage for the event message.
-<2> Retrieve the next event.
-<3> Loop until we receive a +WM_CLOSED+ message, indicating that the 
-    user clicked on close.
+<1> Erzeugt Speicherplatz fuer die Event-Message.
+<2> Verarbeitet den nächsten Event.
+<3> Bleibt in dem Loop bis eine +WM_CLOSED+ Nachricht verarbeitet
+    wird, die anzeigt dass der Benutzer die Schliessbox angeklickt hat.
 
-In later sections, we will respond to more kinds of events within the loop.
-We will then discuss the other values that can be used in +msg_buf+.
+In späteren Abschnitten werden wir in dem Loop auf mehr Arten von Events
+reagieren. Wir werden dann andere mögliche Werte für +msg_buf+ besprechen.
 
-=== Sample Program: Version 1
+=== Beispiel Programm: Version 1
 
-At this point, we have a window which displays some text inside it.  However, 
-if you drag a window over the top of it, the contents will disappear.  Also, 
-none of the widgets (except for close) do anything: we cannot move the window, 
-bring it to the top when we click on another window, etc.  Also, the 
-background shows through in our window, particularly a problem if you are 
-running a multi-tasking OS, such as MINT.
+An diesem Punkt haben wir ein Fenster welches etwas Text anzeigt. Wenn Sie
+aber ein anderes Fenster darüber ziehen, wird der Inhalt verschwinden.
+Ausserdem ist keines der Fenster-Widgets ausser der Schliessbox funktional;
+wir können das Fenster nicht verschieben, es nicht durch anklicken in den
+Vordergrund holen usw. Ausserdem ist der Hintergrund durch das Fenster
+hindurch sichtbar, was vor allem in einer Multitasking-Umgebung wie
+MINT ein Problem ist.
 
+== Ein Fenster aktualisieren: Redraw Events
 
-== Updating a Window: Redraw Events
+Wir möchten gern eine schöne Anzeige in unserem Fenster. Zuerst einmal
+soll der Hintergrund nicht zu sehen sein, sondern statt dessen eine hübsche,
+saubere Fläche. Zweitens soll das Fenster konstant den Inhalt anzeigen den
+wir wollen, selbst wenn wir ein anderes Fenster darüber ziehen und wieder
+weg bewegen.
 
-We would like to have a decent display in our window.  Firstly, it should not 
-show the background, but a nice clean surface.  Secondly, it should keep 
-showing the contents we want, even when we drag another window over it and 
-away.  
+Obgleich nachfolgend mehrere Schritte ausgeführt werden, ist der Code
+vollständig wiederverwendbar in all Ihren GEM-Programmen. Wenn Sie mal
+eine funktionierende Vorlage haben, können Sie diese einfach kopieren,
+und alles sollte funktionieren.
 
-Although there are several steps involved in the following, the code is 
-completely reusable in all your GEM programs.  Once you have a working 
-template, you can simply copy it and everything should work.
-
-=== Drawing within an Area
+=== In einem Bereich zeichnen
 
 Look again at our function +draw_example+: the call to +v_gtext+ does not 
 refer to our window, only the screen.  Our drawing code could, in theory, 
