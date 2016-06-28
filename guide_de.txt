@@ -516,7 +516,7 @@ und alles sollte funktionieren.
 
 Schauen Sie wiederum unsere Funktion +draw_example+ an: Der Aufruf von
 +v_gtext+ referenziert nicht unser Fenster, sondern nur den Screen. Unser
-Zeichen-Code könnte theoretisch überall auf dem Screen direkt etwas
+Zeichnungs-Code könnte theoretisch überall auf dem Screen direkt etwas
 zeichnen. Doch dies würde natürlich die Illusion zerstören, ein Fenster
 zu haben, welches einen Blick auf bestimmte Informationen freigibt.
 Eine bessere Lösung ist es, einen _Clipping_ Bereich festzulegen:
@@ -568,7 +568,7 @@ void draw_interior (struct win_data * wd, GRECT clip) {
 ----
 <1> Versteckt die Maus, aktiviert das Clipping und ermittelt den Arbeitsbereich.
 <2> Löscht den Arbeitsbereich.
-<3> Aufruf unseres Zeichen-Codes.
+<3> Aufruf unseres Zeichnungs-Codes.
 <4> Deaktiviert das Clipping wieder und macht den Mauszeiger wieder sichtbar.
 
 === Display aktualisieren
@@ -626,8 +626,9 @@ Aktualisierung überlappen, und falls ja, zeichnen wir den überlappenden Bereic
 
 [source,c]
 ----
-/* Called when application asked to redraw parts of its display.
-   Walks the rectangle list, redrawing the relevant part of the window.
+/* Aufgerufen wenn die Applikation aufgefordert wird, Teile ihres
+   Displays neu zu zeichnen. Arbeitet die Rechteck-Liste durch und
+   zeichnet jeden relevanten Fensterteil erneut.
  */
 void do_redraw (struct win_data * wd, GRECT * rec1) {
 	GRECT rec2;
@@ -647,31 +648,31 @@ void do_redraw (struct win_data * wd, GRECT * rec1) {
 	wind_update (END_UPDATE);			// <7>
 }
 ----
-<1> Turn off all other window updates, while we update our window contents.
-<2> Retrieve the first rectangle to update.
-<3> We now loop, while there is a rectangle that needs updating.
-<4> Check if the rectangle to update intersects the part of the display we have to update.
-<5> Draw our window only in the area intersecting the two rectangles.
-<6> Retrieve the next rectangle to update.
-<7> Turn back on other window updates.
+<1> Deaktiviert alle anderen Fenster-Updates während wir den Inhalt unseres Fensters aktualisieren
+<2> Ermittelt das erste zu aktualisierende Rechteck
+<3> Nun loopen wir in der Schleife solange es ein Rechteck gibt, das noch aktualisiert werden muss.
+<4> Prüfe of das zu aktualisierende Rechteck den Teil des Displays überlappt, den wir neu zeichnen müssen.
+<5> Zeichne unseren Fensterinhalt nur in dem Bereich, in dem sich die beiden Rechtecke überlappen.
+<6> Ermittle das nächste zu aktualisierende Rechteck.
+<7> Schalte die Aktualisierung der anderen Fenster wieder ein.
 
-(Note that +rc_intersect+ is provided within AHCC's librarys.)
+(Beachten Sie dass +rc_intersect+ von der AHCC library zur Verfügung gestellt wird.)
 
-=== Responding to REDRAW Events
+=== Auf REDRAW Events reagieren
 
-What does the AES do when it thinks our window needs updating?  It sends us 
-a REDRAW event.  Along with the event, it tells us the handle of the window 
-we need to update, and also a rectangle: this rectangle is the area of our
-window it wants us to update.  
+Was macht das AES wenn es denkt dass unser Fenster aktualisiert werden muss?
+Es sendet uns einen REDRAW Event. Zusammen mit dem Event teilt es uns den Handle
+des zu aktualisierenden Fensters mit, sowie ein Rechteck: Dieses Rechteck definiert
+den Bereich unseres Fensters der aktualisiert werden soll.
 
-For a redraw event, we receive the following information in +msg_buf+:
+Für einen REDRAW Event erhalten wir die folgenden Informationen in +msg_buf+:
 
-* msg_buf[0] = WM_REDRAW, the type of event.
-* msg_buf[3] = handle of window which must be redrawn.
-* msg_buf[4] = x coordinate of area to redraw.
-* msg_buf[5] = y coordinate of area to redraw.
-* msg_buf[6] = width of area to redraw, in pixels.
-* msg_buf[7] = height of area to redraw, in pixels.
+* msg_buf[0] = WM_REDRAW, der Typ des Events.
+* msg_buf[3] = Handle des Fensters, welches aktualisiert werden soll.
+* msg_buf[4] = x-Koordinate des zu aktualisierenden Bereichs.
+* msg_buf[5] = y-Koordinate des zu aktualisierenden Bereichs.
+* msg_buf[6] = Breite des zu aktualisierenden Bereichs, in Pixeln.
+* msg_buf[7] = Höhe des zu aktualisierenden Bereichs, in Pixeln.
 
 [source,c]
 ----
@@ -685,61 +686,66 @@ do {
 	}
 } while (msg_buf[0] != WM_CLOSED);
 ----
-<1> We use a switch statement to select the action to respond to, based 
-    on the type of event.
-<2> The type for a redraw event.
-<3> We simply call our +do_redraw+ function.  As we only have one window 
-    in this program, we can pass its window data directly.  Notice how
-    the x, y, w, h coordinates in msg_buf[4,5,6,7] are turned into the 
-    GRECT type.
+<1> Wir benutzen ein "switch"-Statement um die Aktion auszuwählen, auf
+    die wir reagieren, abhängig vom Event-Typ.
+<2> Der Typ für einen REDRAW-Event.
+<3> Wir rufen einfach unsere +do_redraw+ Funktion auf. Da wir in diesem
+    Programm nur ein Fenster haben, können wir die Daten dafür direkt
+    übergeben. Beachten Sie wie die x, y, w, h Koordinaten in msg_buf[4,5,6,7]
+    in den GRECT-Typen übertragen werden.
 
-This part of the program does a lot of hard work.  To recap, every time 
-our program must redraw part of its screen, it will receive a REDRAW 
-event, containing the window handle and screen area to redraw.  We pass 
-these to +do_redraw+ which walks the rectangle list, ensuring we draw on only 
-those parts of the window which are not obscured by other windows in the 
-operating system.  +do_redraw+ then calls, for each unobscured rectangle, 
-+draw_interior+, which sets the clipping region to the unobscured rectangle
-and draws our application's data into just that region.
+Dieser Teil des Programms erledigt eine Menge harter Arbeit. Zur Wiederholung:
+Unser Programm muss Teile seines Displays neu zeichnen; es wird einen REDRAW
+Event erhalten, welcher einen Fenster-Handle enthält sowie den zu aktualisierenden
+Bereich. Wir reichen diese Daten an die +do_redraw+ Funktion, welche die
+Rechtecks-Liste durcharbeitet und sicherstellt, dass wir nur diese Teile des
+Fensters neu zeichnen, welche nicht von einem anderen Fenster verdeckt werden.
++do_redraw+ ruft sodann für jedes nicht verdeckte Rechteck +draw_interior+
+welche den Clipping-Bereich für das nicht verdeckte Rechteck setzt, und
+zeichnet unsere Applikations-Daten in diesen Bereich.
 
-The good news is two-fold.  First, having written all this code, it will 
-probably be pretty-much the same for any GEM program.  The main part you 
-need to change is +draw_example+, or its equivalent.  Second, this sequence 
-is called _every time_ the computer thinks you need to update the screen, 
-and so you don't have to do anything extra to keep the window updated in 
-many cases.  In particular, your program will receive a REDRAW event when 
-it starts up, which means we can delete the call to +draw_example+ we had 
-in +start_program+.
+Die gute Nachricht hier ist zweiteilig. Erstens, nachdem wir nun all diesen
+Code geschrieben haben, werden wir das mehr oder weniger genauso machen
+für jedes andere GEM Programm. Der Hauptteil, den Sie in einem neuen
+Programm anpassen müssen ist +draw_example+, bzw. das äquivalent dazu.
+Zweitens wird dieser Ablauf jedesmal dann ausgeführt, wenn der Computer
+denkt dass der Screen aktualisiert werden muss, weshalb Sie selber sonst
+nichts weiter machen müssen um das Fenster aktuell zu behalten. Insbesondere
+wird unser Programm beim starten schon einen REDRAW Event erhalten, was zur
+Folge hat, dass wir den Aufruf von +draw_example+ in +start_program+
+entfernen können.
 
-=== Sample Program: Version 2
+=== Beispiel-Programm: Version 2
 
-This version includes the REDRAW events, walking the rectangle list, and 
-the code to clear the display background.  When you run the code, the display 
-should now look a lot better.  Try dragging another window over the top of 
-your program: notice how the display updates itself, keeping your window's
-display exactly as you want it.
+Diese Version beinhaltet die REDRAW Events, das Durcharbeiten der Rechtecks-Liste
+und den Code zum löschen des Display-Hintergrundes. Wenn Sie den Code ausführen
+müsste das Display nun wesentlich besser aussehen. Versuchen Sie, ein anderes
+Fenster über das unseres Programmes zu ziehen: Beachten Sie, wie das Display
+sich selber aktualisiert und damit unser Fenster immer so anzeigt wie gewünscht.
 
-However, it is now time to use some of the other possible window controls, 
-and manage the events they trigger.
+Doch nun ist es Zeit, mal einige der anderen möglichen Fenster-Elemente zu
+benutzen, und die von ihnen ausgehenden Events zu verarbeiten.
 
 
-== Simple Window Events: Top and Move
+== Einfache Fenster Events: TOP und MOVE
 
-The first two events we will handle are straightforward, as we can rely on the 
-AES to do the necessary work.  These two events are triggered when our window 
-is brought to the top of the screen, or when our window is moved to a different 
-location.
+Die ersten beiden Events die wir behandeln sind sehr simpel, da wir uns darauf
+verlassen können, dass das AES die notwendigen Schritte ausführt. Diese beiden
+Events werden getriggert wenn unser Fenster in den Vordergrund des Screens
+gebracht wird, oder wenn unser Fenster an eine andere Position verschoben wird.
 
 === TOP
 
-When several windows are open, only one is "on top".  You can bring a window 
-to the top by clicking on it, or if it is "behind" another window which is closed.
+Wenn mehrere Fenster offen sind, ist nur eines "on top", also zuoberst, bzw.
+im Vordergrund. Sie können ein Fenster in den Vordergrund bringen indem Sie
+es anklicken, oder indem Sie ein anderes, darüber liegendes Fenster schliessen.
 
-When our window is brought to the top, our application is sent the message 
-+WM_TOPPED+.  The handle of our window is provided in +msg_buf+.  All we need 
-to do is use +wind_set+ to bring our window to the top.  
+Wenn unser Fenster in den Vordergrund gebracht wird, erhält unsere Applikation
+die Event-Message +WM_TOPPED+. Der Handle unseres Fensters wird in +msg_buf+
+mitgeteilt. Alles, was wir tun müssen, ist unser Fenster mittels +wind_set+
+in den Vordergrund zu bringen.
 
-In our event loop, we add the following code:
+In unserem Event-Loop fügen wir den folgenden Code hinzu:
 
 [source,c]
 ----
@@ -748,23 +754,27 @@ case WM_TOPPED:
 	break;
 ----
 
-You may wonder how a window that has been partially obscured by another window 
-will be redrawn when you bring it to the top.  The answer is that I lied a little 
-when I said all we need to do is the above: AES will trigger a REDRAW event for 
-a window, when you set it to the top, so our program will have to redraw the 
-window contents.  However, as we already handle REDRAW events, we have nothing 
-else to do - our previous code and AES do everything for us already.
+Sie fragen sich vielleicht wie ein Fenster, das teilweise von einem anderen Fenster
+verdeckt worden war, neu gezeichnet wird, wenn es in den Vordergrund gebracht wird.
+Die Antwort ist dass ich ein bisschen gelogen hatte als ich sagte, dass alles was
+wir zu tun hätten das oben beschriebene sei: AES wird einen REDRAW-Event für ein
+Fenster auslösen, wenn es in den Vordergrund gebracht wird, weshalb unser Programm
+den Fenster-Inhalt neu zeichnet. Und da wir REDRAW-Events bereits verarbeiten
+haben wir nichts weiter zu tun - unser vorheriger Code und AES erledigen bereits alles
+notwendige für uns.
 
 === MOVE
 
-Windows can be moved, usually, by holding the top bar and dragging them.  For 
-this to be available, you need to include the MOVER option in the parts list 
-for your window when you create it (see the section on creating windows).
+Fenster können verschoben werden, üblicherweise indem man den oberen Rahmen anklickt
+und dann zieht. Damit dies funktioniert müssen Sie die MOVER Option in die Element-Liste
+für Ihr Fenster hinzufügen, wenn Sie es erzeugen (siehe der Abschnitt zur Erzeugung
+von Fenstern).
 
-When our window is moved, all we need to do is set the window's coordinates to the 
-new location.  The new location is provided in +msg_buf+, positions 4-7. 
+Wenn Ihr Fenster verschoben wird ist alles, was Sie tun müssen, die Koordinaten des
+Fensters auf die Werte der neuen Position zu aktualisieren. Die neue Position wird
+mitgeteilt in +msg_buf+, Bytes 4-7.
 
-In our event loop, we add the following code:
+In unserem Event-Loop fügen wir folgenden Code hinzu:
 
 [source,c]
 ----
@@ -774,18 +784,19 @@ case WM_MOVED:
 	break;
 ----
 
-The AES copies our window's contents directly to its new location.  (The AES also 
-sends redraw messages to any windows which our window was obscuring - but we can 
-ignore those.)
+AES kopiert den Inhalt unseres Fensters direkt an seine neue Position (AES schickt
+auch REDRAW-Messages an jedes Fenster, welches von unserem verdeckt worden war -
+was uns aber nicht weiter betrifft).
 
-We do, however, have to look more closely at our drawing code, now that 
-the window can move anywhere on the screen.  Remember that the code that draws 
-on the screen does so through the VDI, and we do not provide any reference to 
-our window when we do so.  When we move our window, we need to draw the 
-contents of our window in a different location.  To do this, we pass the 
-coordinates of where we want the contents drawn to our draw function.  The 
-provided x,y coordinates then represent the origin we need to use for our 
-drawing code.  We pass these coordinates to our drawing code from +draw_interior+.
+Wir müssen nun aber einen genaueren Blick auf unseren Zeichnungs-Code werfen, nun
+da unser Fenster überallhin auf dem Screen verschoben werden kann. Erinnern Sie
+sich daran, dass der Code, der auf den Screen zeichnet, dies mittels des VDI
+erledigt, und dass wir keine Referenz auf unser Fenster dafür bereitstellen.
+Wenn wir unser Fenster bewegen, müssen wir den Inhalt an einer neuen Position
+wieder zeichnen. Um das zu tun übergeben wir die Koordinaten der Ziel-Position
+an unsere Zeichen-Funktion. Die angegebenen x,y Koordinaten repräsentieren den
+Ursprungs-Punkt für unsere Zeichnungs-Operationen. Wir übergeben diese Koordinaten
+von +draw_interior+ an unseren Zeichnungs-Code.
 
 [source,c]
 ----
@@ -795,9 +806,11 @@ void draw_example (int app_handle, struct win_data * wd, int x, int y, int w, in
 
 }
 ----
-<1> We offset the drawing location by the x, y position of the window.
+<1> Wir verschieben die Position fürs Zeichnen um die x,y Koordinaten des Fensters.
 
-=== Sample Program: Version 3
+=== Beispiel Programm: Version 3
+
+Version 3
 
 Version 3 now includes these two events.  Notice also the inclusion of +MOVER+
 when the window is created, and the updated +draw_example+ and +draw_interior+ 
