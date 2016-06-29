@@ -812,56 +812,60 @@ void draw_example (int app_handle, struct win_data * wd, int x, int y, int w, in
 
 Version 3
 
-Version 3 now includes these two events.  Notice also the inclusion of +MOVER+
-when the window is created, and the updated +draw_example+ and +draw_interior+ 
-functions.
+Version 3 beinhaltet jetzt diese beiden Events. Beachten Sie auch die Nutzung
+von +MOVER+ wenn das Fenster erzeugt wird, und die aktualisierten +draw_example+
+und +draw_interior+ Funktionen.
 
-Our window is now a respectable GEM program.  It redraws itself when requested,
-does not disturb any other windows in the system, can be moved around the 
-screen and brought back to the top.  If you are content with a fixed size 
-window, you now have enough to implement a GEM application.
+Unser Fenster ist jetzt ein respektables GEM Programm. Es aktualisiert sich
+selbst wenn nötig, stört keine anderen Fenster im System, kann auf dem Screen
+herum bewegt und in den Vordergrund gebracht werden. Wenn Ihnen ein Fenster
+mit fixer Grösse reicht, haben Sie jetzt genug zusammen um eine GEM
+Applikation zu implementieren.
 
 
-== Changing the Window Size: Full and Resize
+== Fenster-Grösse ändern: FULL und RESIZE
 
-The next two window controls we will look at are used to alter the size of the 
-window.  The first, the FULLER, allows us to make the window its maximum size.
-Clicking the FULLER a second time will restore the window to its previous size.
-The second is the SIZER, which enables us to dynamically alter the window size 
-to whichever dimensions we wish.
+Die nächsten beiden Fenster-Elemente die wir anschauen werden benutzt, um die
+Grösse des Fensters zu ändern. Das erste, FULLER (Maximier-Box), erlaubt es,
+das Fenster auf seine maximale Grösse zu erweitern. Klickt man ein zweites
+Mal auf die Maximier-Box schrumpft das Fenster wieder auf seine vorherige
+Grösse zurück. Das zweite Element ist der SIZER, die Box rechts unten die
+es ermöglicht, das Fenster dynamisch auf jede gewünschte Grösse zu ändern.
 
-Both these controls rely on the +wind_set+ command to set the current x, y, w, h,
-dimensions of the window. 
+Beide diese Elemente benötigen die +wind_set+ Funktion um die aktuellen
+x, y, w, h Dimensionen des Fensters festzulegen.
 
 === FULLER
 
-The FULL widget is used to expand our window to its maximum size.  This maximum
-size was set when you created the window, but is usually the extent of the 
-desktop: we stored these numbers in the +fullx+ etc slots of our window data.  
-Once fulled, a window can be restored by again clicking the FULL widget.  The 
-AES enables us to retrieve the previous dimensions of a window using 
-+WF_PREVXYWH+ in a call to +wind_get+.
+Das FULL Widget wird benutzt um das Fenster auf die maximale Grösse zu öffnen.
+Diese maximale Grösse wurde festgelegt beim erzeugen des Fensters; normalerweise
+handelt es sich dabei um die Grösse des Desktops: Diese Werte haben wir in den
++fullx+ etc. Feldern unserer Fester-Daten gespeichert. Einmal maximiert kann
+das Fenster wieder auf die vorherige Grösse gebracht werden, indem nochmal das
+FULL Widget angeklickt wird. Das AES ermöglicht es, die vorherigen Dimensionen
+des Fensters in einem Aufruf von +wind_get+ zu ermitteln mittels +WF_PREVXYWH+.
 
-Fortunately, the AES will ensure the display is kept updated, in two ways.
-First, if the window is just made smaller, then nothing needs updating in 
-your program, as the display has simply been truncated.  Second, if the 
-window is made full, it becomes larger, so a REDRAW event is sent to your 
-application, to redraw the new rectangle(s).  As we already handle these events, 
-nothing extra is needed.
+Glücklicherweise stellt das AES auf zwei Arten sicher, dass das Display immer
+aktuell gehalten wird. Erstens, wenn das Fenster kleiner gemacht wird, muss
+nichts aktualisiert werden, da nur Inhalte abgeschnitten werden. Zweitens,
+wenn das Fenster maximiert wird, wird es grösser, weshalb ein REDRAW Event
+an unsere Applikation geschickt wird, um die neuen Rechtecke zu zeichnen.
+Da wir diese Events bereits verarbeiten, braucht es keine besonderen Massnahmen.
 
-The function to handle the fulled event is as follows.  It is divided into 
-two parts: if the window is already full, then we need to retrieve its previous 
-size and set the current window size to those older values.  If the window 
-is not already full, then we need to retrieve the maximum size, and set the 
-current window size to the maximum (full) values.  In addition, it is 
-traditional to display a little animation of the window growing or shrinking
-to its new size, hence the calls to +graf_shrinkbox+.  (This may not be visible
-on a fast computer: I can't detect them on the Firebee!)
+Die Funktion um den FULL-Event zu behandeln sieht wie folgt aus. Sie ist
+aufgeteilt in zwei Teile: Wenn das Fenster schon auf maximaler Grösse ist,
+müssen wir seine vorherige Grösse ermitteln und die Dimensionen des Fensters
+auf diese Werte setzen. Wenn das Fenster noch nicht seine maximale Grösse
+hat, müssen wir diese ermitteln und dann das Fenster auf diese Grösse setzen.
+Zusätzlich ist es üblich, eine kleine Animation zu zeigen für das Vergrössern
+oder Verkleinern des Fensters, deshalb der Aufruf von +graf_shrinkbox+. Auf
+sehr schnellen Computern ist das eventuell gar nicht zu sehen; auf der FireBee
+etwa kann ich die Animationen nicht sehen.
 
 [source,c]
 ----
 void do_fulled (struct win_data * wd) {
-	if (is_full_window (wd)) { /* it's full, so shrink to previous size */
+	if (is_full_window (wd)) { /* das Fenster ist schon maximiert, also zurück-schrumpfen */
 		int oldx, oldy, oldw, oldh;
 		int fullx, fully, fullw, fullh;
 
@@ -870,7 +874,7 @@ void do_fulled (struct win_data * wd) {
 		graf_shrinkbox (oldx, oldy, oldw, oldh, fullx, fully, fullw, fullh); // <3>
 		wind_set (wd->handle, WF_CURRXYWH, oldx, oldy, oldw, oldh);          // <4>
 
-	} else { /* make full size */
+	} else { /* Fenster maximieren */
 		int curx, cury, curw, curh;
 		int fullx, fully, fullw, fullh;
 
@@ -881,14 +885,15 @@ void do_fulled (struct win_data * wd) {
 	}
 }
 ----
-<1> Find the previous dimensions of the window.
-<2> Find the maximum dimensions of the window.
-<3> Draw a little animation of the shrinking window.
-<4> Set the window size to the previous dimensions.
+<1> Ermittelt die vorherigen Dimensionen des Fensters.
+<2> Ermittelt die maximalen Dimensionen des Fensters.
+<3> Zeichnet eine kleine Animation beim Schrumpfen des Fensters.
+<4> Setzt die Fenster-Grösse auf die vorherigen Dimensionen.
 
-Notice the function +is_full_window+, which returns +true+ if the window is
-currently at its maximum size.  This function merely checks the current and
-full dimensions of the window, to see if they are the same.  The function is:
+Beachten Sie die Funktion +is_full_window+, welche +true+ zurückgibt, wenn
+das Fenster tatsächlich bereits seine maximale Grösse hat. Diese Funktion
+vergleicht schlicht die aktuelle mit der maximalen Grösse des Fensters.
+Die Funktion sieht so aus:
 
 [source,c]
 ----
@@ -906,7 +911,8 @@ bool is_full_window (struct win_data * wd) {
 }
 ----
 
-Finally, to respond to size events, include +WM_FULLED+ in the event loop, as follows:
+Und zu guter Letzt muss auf +WM_FULLED+ Events reagiert werden im Event-Loop,
+und zwar wie folgt:
 
 ----
 case WM_FULLED:
@@ -916,20 +922,23 @@ case WM_FULLED:
 
 === SIZER
 
-The sizer allows the user to adjust the window dimensions to any size she 
-chooses.  The AES will tell your application when the sizer has been adjusted,
-and also tell you the new size of the window (in +msg_buf+).  Your program 
-must alter the size of the window, and make any other adjustments required to 
-make the window contents suit its new size (this is particularly important
-when you have sliders as well, for which see the next section).
+Das SIZER-Element erlaubt es dem Benutzer, die Grösse des Fensters interaktiv
+auf jede gewünschte Grösse zu ändern (rechte untere Fenster-Ecke). Das AES
+teilt Ihrer Applikation mit, wenn der SIZER benutzt wurde, und damit dann
+auch die neue Grösse des Fensters (in +msg_buf+). Ihr Programm muss dann
+die Grösse des Fensters ändern, und allfällige andere Änderungen vornehmen
+die nötig sein können, damit der Inhalt für die neue Fenstergrösse korrekt
+angepasst wird (das ist vor allem wichtig wenn das Fenster Scrollbar-Sliders
+benutzt, was wir im nächsten Abschnitt anschauen).
 
-Fortunately, the AES will ensure the display is kept updated, just as 
-with the fulled event, above.  
+Glücklicherweise stellt das AES sicher dass das Display aktuell gehalten wird,
+genauso wie mit dem vorher besprochenen FULLED-Event.
 
-The code to actually resize our window is, at this stage, simple.  All we 
-need to do is set the current dimensions of the window to the new size.  
-We add a simple check that the new dimensions are not _too_ small, so the 
-user cannot reduce the window beyond a given minimum.
+Der benötigte Code um die Grösse des Fensters effektiv zu ändern ist jetzt
+relativ einfach. Alles, was es braucht ist die Dimension des Fensters auf
+die neue Grösse zu setzen. Zusätzlich implementieren wir einen einfachen
+Test um sicherzustellen, dass die neue Grösse nicht _zu_ klein ist, so dass
+der Benutzer das Fenster nur bis zu einem gewissen Minimum verkleinern kann.
 
 [source,c]
 ----
@@ -941,13 +950,14 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 		  msg_buf[4], msg_buf[5], msg_buf[6], msg_buf[7]); // <2>
 }
 ----
-<1> To prevent the user sizing our window out of existence, we check 
-    that the new width and height won't be too small.  The minimum 
-    dimensions are now defined in "windows.h".
-<2> All we need to do is set our window's current x, y, w, h to the new 
-    size.
+<1> Um zu verhindern dass der Benutzer unser Fenster bis zur Unsichtbarkeit
+    verkleinert, prüfen wir, dass die neue Breite und Grösse nicht zu klein sind.
+    Die minimalen Dimensionen sind definiert in "windows.h".
+<2> Alles was wir tun müssen, ist die Dimensionen unseres Fensters auf die
+    neue Grösse zu ändern.
 
-To respond to size events, include +WM_SIZED+ in the event loop, as follows:
+Um auf SIZE-Events zu reagieren, muss der Event-Loop noch um die Behandlung
+dieser Events erweitert werden:
 
 [source,c]
 ----
@@ -955,9 +965,9 @@ case WM_SIZED:
 	do_sized (wd, msg_buf); // <1>
 	break;
 ----
-<1> Pass the window and the message buffer to +do_sized+.
+<1> Übergibt das Fenster und den Message-Buffer an +do_sized+.
 
-=== Sample Program: Version 4
+=== Beispiel Programm: Version 4
 
 Version 4 now supports more of the window's widgets: you can resize the window 
 using the button at the bottom-right, and also make the window switch between 
