@@ -7,7 +7,7 @@ in C mit AHCC. Sie enthält die detaillierten einzelnen Schritte zur
 Implementation einer Beispiel GEM Anwendung. Das Beispiel-Programm
 beginn zuerst mit einem einzelnen Fenster mit etwas Text. Dann erweitern wir
 das Programm über mehrere Versionen hinweg, um mehrere Fenster mit
-Slidern und anderen Fenster-Widgets zu erzeugen. Das Programm wird
+Schiebern und anderen Fenster-Widgets zu erzeugen. Das Programm wird
 dann erweitert um Menüs, Datei-Dialoge und andere AES Features.
 
 Wieso AHCC? Zwar gibt es viele Optionen für die C-Programmierung auf der
@@ -187,7 +187,7 @@ Zeit beanspruchen wird, ist die Handhabung eines Fensters zu erlernen:
 Ein Fenster ist ein Teil des Screens in welchem unsere Applikation freie
 Hand hat. Sie haben totale Kontrolle über den Inhalt des Fensters. Sie
 entscheiden was dort gezeichnet wird, wie das, was gezeichnet wird, reagiert
-wenn der Benutzer den Slider bewegt, und Sie müssen auch sicherstellen das
+wenn der Benutzer den Schieber bewegt, und Sie müssen auch sicherstellen das
 das, was Sie im Fenster zeichnen dort bleibt (und nur dort) während Ihr
 Fenster interagiert mit den Fenstern anderer Applikationen (in MINT) oder
 mit Desktop Accessories.
@@ -316,7 +316,7 @@ void open_vwork (void) {
 
 Jedes Fenster in unserer Applikation wird dem Benutzer irgendwelche Informationen
 anzeigen. Ein Fenster kann auf viele Events reagieren: Es kann auf dem Bildschirm
-herum bewegt werden, vergrössert oder verkleinert werden oder seine Scrollbar-Slider
+herum bewegt werden, vergrössert oder verkleinert werden oder seine Scrollbalken-Schieber
 werden verschoben, und es muss die jederzeit seinen Inhalt aktuell halten. Es gibt
 also mehrere Teilinformationen, die ein Fenster berücksichtigen muss. Aus diesem
 Grunde benutze ich eine +struct+ um alle relevanten Daten zu einem einzelnen
@@ -392,10 +392,10 @@ der Werte die wir benutzen werden sind:
 * WF_CURRXYWH : Die aktuelle Fenstergrösse, einschliesslich seiner Widgets
 * WF_PREVXYWH : Die vorherige Fenstergrösse, einschliesslich seiner Widgets
 * WF_FULLXYWH : Die maximale  Fenstergrösse, einschliesslich seiner Widgets
-* WF_HSLIDE : Die Position des horizontal Scrollbar-Sliders
-* WF_VSLIDE : Die Position des vertikalen Scrollbar-Sliders
-* WF_HSLSIZE : Die Grösse des horizontalen Sliders
-* WF_VSLSIZE : Die Grösse des vertikalen Sliders
+* WF_HSLIDE : Die Position des horizontal Scrollbar-Schiebers
+* WF_VSLIDE : Die Position des vertikalen Scrollbar-Schiebers
+* WF_HSLSIZE : Die Grösse des horizontalen Schiebers
+* WF_VSLSIZE : Die Grösse des vertikalen Schiebers
 
 Beachten Sie, dass wir in +wind_create+ die Flags +NAME|CLOSER+ benutzt haben. Diese
 instruieren unser Fenster, Platz für einen Titel und für eine Schliess-Box bereitzustellen.
@@ -928,7 +928,7 @@ teilt Ihrer Applikation mit, wenn der SIZER benutzt wurde, und damit dann
 auch die neue Grösse des Fensters (in +msg_buf+). Ihr Programm muss dann
 die Grösse des Fensters ändern, und allfällige andere Änderungen vornehmen
 die nötig sein können, damit der Inhalt für die neue Fenstergrösse korrekt
-angepasst wird (das ist vor allem wichtig wenn das Fenster Scrollbar-Sliders
+angepasst wird (das ist vor allem wichtig wenn das Fenster Scrollbalken-Schieber
 benutzt, was wir im nächsten Abschnitt anschauen).
 
 Glücklicherweise stellt das AES sicher dass das Display aktuell gehalten wird,
@@ -969,40 +969,44 @@ case WM_SIZED:
 
 === Beispiel Programm: Version 4
 
-Version 4 now supports more of the window's widgets: you can resize the window 
-using the button at the bottom-right, and also make the window switch between 
-full screen and its original size.
+Version 4 nun mehr Fenster-Elemente: Sie können das Fenster vergrössern oder
+verkleinern mit dem Button rechts unten, und Sie können das Fenster auch
+zwischen seiner Maximal- und seiner aktuellen Grösse hin- und herschalten.
 
-To make the display more interesting, the window contains several lines of a 
-poem.  You need to resize the window to see more of the poem.  How much you 
-can see will depend on the size of your screen.  To see the rest of the poem, 
-we somehow need to move the window "over" the poem being displayed - this 
-introduces our next topic, sliders.
+Um die Anzeige interessanter zu gestalten enthält das Fenster mehrere Zeilen
+eines Gedichtes. Sie müssen das Fenster vergrössern, um mehr vom Gedicht zu
+sehen. Wieviel Sie sehen können hängt von der Grösse Ihres Screens ab. Um
+den Rest des Gedichtes zu sehen, müssen wir nun irgendwie das Fenster "über"
+das Gedicht legen; das führt uns zum nächsten Thema, "Schieber" ("slider").
 
 
-== Sliding across Window Contents
+== Fenster-Inhalte verschieben
 
-The sliders are what give the illusion of windows looking onto a wider space of 
-data.  Sliders are complicated to handle, as users have many ways of interacting 
-with them.  A slider can be dragged directly.  Users can click on the arrows,
-or in the slider bar.  As there are two sliders, this makes for ten functions just 
-to handle the sliders.  In addition, when a window is resized or made full,
-or if the window's contents change, its dimensions change, and so the positions 
-and size of the sliders must be changed as well.
+Die Scrollbalken-Schieber ("Sliders") erzeugen die Illusion, dass das Fenster
+einen Blick auf eine grössere Fläche gewährt. Schieber sind kompliziert zu
+handhaben, da Benutzer verschiedene Möglichkeiten haben, um damit zu interagieren.
+Ein Schieber kann direkt gezogen werden, Benutzer können die Pfeile anklicken,
+oder den Scrollbalken selber. Da es zwei Schieber gibt, bedeutet das für uns
+zehn Funktionen, nur um die Schieber zu handhaben. Dazu kommt, dass eine
+Änderung der Grösse oder des Inhaltes des Fensters dazu führt, dass sich
+auch die Positionen und die Grössen der Schieber verändern, und entsprechend
+angepasst werden müssen.
 
-I will cover the code for sliders and arrows in one go, as it is all related. 
-Also, the vertical and horizontal sliders are essentially the same, code wise, 
-so I shall mainly present code for the vertical slider here: code for the 
-horizontal slider is similar, and contained in the example code.
+Ich werde den Code für die Schieber und Pfeile in einem Durchgang behandeln,
+da dies alles zusammenhängt. Ausserdem sind die horizontalen und vertikalen
+Schieber essentiell dasselbe, was den Code angeht, weshalb ich hauptsächlich
+den Code für den vertikalen Schieber aufzeige: Code für den horizontalen
+Schieber ist ähnlich, und im Beispiel-Code enthalten.
 
-Because of the large number of events that need handling (10 in total), this 
-part of your program will be the most extensive, and the most complicated.  
-Adding sliders also requires consideration when drawing the contents of the 
-screen.  
+Wegen der grossen Zahl von Events die behandelt werden müssen (total 10)
+wird dies der umfangreichste Teil unseres Programmes, und der komplizierteste.
+Hinzugefügte Schieber müssen auch bedacht werden, wenn der Inhalt des
+Screens gezeichnet wird.
 
-We shall begin by adding sliders to our program, getting the sliders to show 
-the right size and position, then we modify +draw_example+ to display things 
-correctly, before finally seeing how to respond to all the events.
+Fangen wir damit an, dass wir Schieber zu unserem Programm hinzufügen und
+dafür sorgen, dass die Schieber die korrekte Grösse und Position bekommen.
+Dann modifizieren wir +draw_example+ um alles korrekt anzuzeigen, bevor
+wir schliesslich sehen, wie auf alle Events reagiert werden muss.
 
 === Showing the Sliders
 
