@@ -1008,47 +1008,55 @@ dafür sorgen, dass die Schieber die korrekte Grösse und Position bekommen.
 Dann modifizieren wir +draw_example+ um alles korrekt anzuzeigen, bevor
 wir schliesslich sehen, wie auf alle Events reagiert werden muss.
 
-=== Showing the Sliders
+=== Die Schieber anzeigen
 
-Adding the sliders and arrows is done in the parts list when creating our 
-window.  We need to add the slider and its two arrows.  A complete parts list, 
-including all the previously mentioned windows widgets, is:
+Die Schieber und Pfeile hinzuzufügen geschieht über die Element-Liste beim
+erzeugen des Fensters. Wir müssen den Schieber mit seinen beiden Pfeilen
+hinzufügen. Eine vollständige Element-Liste mit all den erwähnten Widgets
+sieht dann so aus:
 
 ----
 NAME|CLOSER|FULLER|MOVER|SIZER|UPARROW|DNARROW|VSLIDE|LFARROW|RTARROW|HSLIDE
 ----
 
-The AES makes some space for the sliders, as with the other window widgets, and 
-leaves the remaining room for us to draw in.  This is why, when doing operations 
-such as FULL, we use +WF_CURRXYWH+ to get or set the current window dimensions, 
-but, for drawing _within_ the window, we use +WF_WORKXYWH+ to get the current 
-_working_ area of the window.
+Das AES macht etwas Platz frei für die Schieber, so wie auch für die anderen
+Fenster-Elemente, und überlässt uns den verbleibenden Platz um unseren Inhalt
+zu zeichnen. Aus diesem Grund benutzen wir für die Behandlung von Operationen
+wie Maximierung +WF_CURRXYWH+ um die aktuellen Fenster-Dimensionen zu ermitteln;
+wenn wir hingegen _im_ Fenster zeichnen wollen rufen wir +WF_WORKXYWH+ auf, um
+den aktuellen Arbeitsbereich zu ermitteln.
 
-=== Setting the Sliders
+Mit anderen Worten, der "Arbeitsbereich" ist der innere Teil des Fensters, in
+dem wir unsere Applikations-Daten anzeigen, also das Fenster ohne die Rahmen.
 
-Each slider has two parameters: its _size_ and its _position_.  The size must 
-reflect the portion of the window contents we can currently see.  The position 
-must reflect where our current window contents are, in relation to the whole.
+=== Schieber setzen
 
-Before we can start, we need to decide a few details about what our window 
-will be displaying, and how using the sliders will affect what is displayed.
-For example, for a window displaying text, we would expect a click on the down 
-arrow to move the display up by a single line of text.  A click on page down 
-would move the display up by a page of text, moving the currently bottom line 
-to the top of the screen.  The vertical slider should reflect the number of 
-lines of text displayed in proportion to the total number of lines available 
-to display.  Similarly, the horizontal arrows would move the text by a character,
-in either direction.
+Jeder Schieber hat zwei Parameter: Seine _Grösse_ (size) und seine _Position_.
+Die Grösse muss proportional dem momentan sichtbaren Teil des Fenster-Inhaltes
+entsprechen. Die Position wiederspiegelt, wo sich der Inhalt des Fensters
+befindet, relativ zur seiner Gesamt-Grösse.
 
-Hence, the first two details we need to decide are the size of a vertical step, 
-and the size of a horizontal step.  For a text display, this will be the height 
-and width of a character, respectively.  For graphical displays, other kinds 
-of step size might be appropriate: in the Sokoban program (see later), I chose 
-the size of a displayed cell as the step size; when displaying an image, perhaps 
-a single pixel would be the required step size.
+Bevor wir beginnen müssen wir ein paar Entscheidungen treffen bezüglich der
+Frage, was unser Fenster anzeigen soll, und wie die Schieber sich darauf auswirken.
+Zum Beispiel würden wir bei einem Fenster welches Text anzeigt erwarten, dass
+ein Klick auf den Abwärts-Pfeil den Inhalt des Fensters um eine Zeile aufwärts
+bewegt. Ein Klick in die Scrollbar unterhalb des Schiebers würde das Display
+um eine Seite nach oben verschieben, wobei die aktuell zuunterst sichtbare
+Zeile an den oberen Fensterrand wandert. Der vertikale Schieber sollte die
+Anzahl angezeigter Zeilen repräsentieren, im Verhältnis zur gesamten Zahl
+Textzeilen. Äquivalent würden die horizontalen Pfeile den Text um eine Spalte
+seitwärts verschieben.
 
-This step size is an important feature of the window: I store it in the 
-+win_data+ structure, and set it when creating the window.  
+Demzufolge sind die ersten beiden zu entscheidenden Fragen: Was ist die Grösse
+eines vertikalen Schrittes, und was die Grösse eines horizontalen. Für eine
+Text-Anzeige sind das die Breite und Höhe eines Text-Zeichens. Für grafische
+Inhalte können andere Schrittgrössen sinnvoll sein: Im Sokoban Programm (dazu
+später mehr) habe ich entschieden, die Grösse eines angezeigten Feldes als die
+Schrittgrösse zu benutzen. Wenn ein Bild angezeigt wird, ist es vielleicht
+sinnvoll, ein einzelnes Pixel als Schritt-Grösse zu nutzen.
+
+Diese Schritt-Grösse ist eine wichtige Funktionalität des Fensters: Ich speichere
+sie in der +win_data+ Struktur und setze sie beim Erzeugen des Fensters.
 
 Four other items of information are also stored in +win_data+.  These are:
 
