@@ -1198,25 +1198,26 @@ void update_sliders (struct win_data * wd) {
 <3> Aktualisiert Grösse und Position des vertikalen Schiebers.
 <4> Aktualisiert Grösse und Position des horizontalen Schiebers.
 
-=== Drawing a Window with Sliders
+=== Ein Fenster mit Schiebern zeichnen
 
-There is no point having sliders if our window contents do not respond 
-to the position of the sliders.  In addition, our drawing code must 
-record the amount of vertical and horizontal space taken up by the 
-contents, to use when setting the size and position of the sliders.
+Es macht keinen Sinn, Schieber zu haben, wenn unser Fenster-Inhalt nicht
+auf die Position der Schieber reagiert. Zusätzlich muss unser Zeichnungs-Code
+speichern, wieviel Platz horizontal und vertikal vom Inhalt belegt wird,
+damit diese Werte genutzt werden können um die Grösse und Position der
+Schieber zu errechnen.
 
-To record the amount of space taken up by the contents, I update the number of 
-lines shown every time a line of text is shown, and the number of columns 
-shown by the maximum width of text.  
+Um den vom Inhalt benötigten Platz zu speichern, aktualisiere ich die Anzahl
+angezeigter Zeilen jedes Mal wenn eine Zeile gezeigt wird, und die Anzahl
+Spalten mit der maximalen Text-Breite.
 
-The vertical slider position is accounted for by ignoring the number of lines 
-in the display equal to the slider position.
+Aus der vertikalen Schieber-Position ergibt sich die Anzahl zu ignorierender Zeilen,
+entsprechend der Position des Schiebers.
 
-The horizontal slider position is accounted for by printing the text offset to the 
-left by the slider position.
+Aus der horizontalen Schieber-Position ergibt sich der Offset links von der
+Schieber-Position, für das Zeichnen des Textes.
 
-Note, I don't worry about text being displayed off screen, as this is taken care 
-of by the clipping, set in +draw_interior+.
+Beachten Sie dass ich mich nicht darum kümmere, dass Text ausserhalb des Screens
+gezeichnet wird, da dies vom in +draw_interior+ definierten Clipping geregelt wird.
 
 [source,c]
 ----
