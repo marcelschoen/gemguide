@@ -1058,57 +1058,58 @@ sinnvoll, ein einzelnes Pixel als Schritt-Grösse zu nutzen.
 Diese Schritt-Grösse ist eine wichtige Funktionalität des Fensters: Ich speichere
 sie in der +win_data+ Struktur und setze sie beim Erzeugen des Fensters.
 
-Four other items of information are also stored in +win_data+.  These are:
+Vier andere Informationen sind ebenfalls in +win_data+ enthalten:
 
-. the total number of lines shown (the vertical height of the display);
-. the maximum number of characters in a line (the horizontal width of the display);
-. the _current_ vertical position, the number of lines down in the display; and
-. the _current_ horizontal position, the number of characters across in the display.
+. Die Gesamtzahl sichtbarer Zeilen (die vertikale Höhe des Displays)
+. The maximale Anzahl Zeichen in einer Zeile (die horizontale Breite des Displays)
+. Die _aktuelle_ vertikale Position (die Nummer der ersten sichtbaren Zeile) und
+. Die _aktuelle_ horizontale Position (die Nummer des ersten sichtbaren Zeichens).
 
-These size items are added to +win_data+ as follows:
+Diese Grössen-Angaben werden in +win_data+ wie folgt abgelegt:
 
 [source,c]
 ----
 struct win_data {
-	int handle; /* window handle */
+	int handle; /* Fenster handle */
 
-	int lines_shown; /* number of lines shown in current display */
-	int colns_shown; /* number of columns shown in current display (longest line) */
-	int vert_posn; /* number of lines down of vertical scroll bar */
-	int horz_posn; /* number of characters from left of horizontal scroll bar */
+	int lines_shown; /* Anzahl sichtbarer Zeilen im aktuellen Display */
+	int colns_shown; /* Anzahl sichtbarer Spalten im aktuellen Display (längste Zeile) */
+	int vert_posn; /* Nummer der ersten sichtbaren Zeile */
+	int horz_posn; /* Nummer der ersten sichtbaren Spalte */
 
-	int cell_h; /* height of char/cell in window */
-	int cell_w; /* width of char/cell in window */
+	int cell_h; /* Höhe einer Zeichen-Zelle im Fenster */
+	int cell_w; /* Breite einer Zeichen-Zelle im Fenster */
 
-	/* REMAINING SLOTS NOT SHOWN */
+	/* VERBLEIBENDE FELDER NICHT ANGEZEIGT */
 }
 ----
 
-The following diagram illustrates each of these six slots (the blue rectangle 
-illustrates the displayed window onto the background text):
+Das folgende Diagramm illustriert jedes dieser sechs Felder (das blaue Rechteck
+illustriert das angezeigte Fenster zum Hintergrund-Text):
 
 image::images/sliders.png[width=300]
 
-The size of a slider must indicate the proportion of text actually shown against the total 
-amount of text that could be shown.  In our example, the poem has a number of lines to it.
-If all of the poem is showing in the window, then the vertical slider must be at its maximum 
-- there is nothing to scroll.  If however the window is shorter, so only some of the lines 
-are showing, then the slider size must reflect the proportion of text showing against the 
-total number of lines in the poem.  Similar considerations apply to the horizontal slider.
+Die Grösse eines Schiebers muss das Verhältnis des tatsächlich sichtbaren Textes gegenüber
+der totalen Menge Text anzeigen. In unserem Beispiel hat das Gedicht eine bestimmte Anzahl
+Zeilen. Wenn das ganze Gedicht im Fenster angezeigt wird, muss der vertikale Schieber seine
+Maximal-Grösse einnehmen - es gibt nichts zu scrollen. Wenn das Fenster jedoch kleiner ist,
+so dass nur ein Teil der Zeilen sichtbar ist, muss der Schieber das Verhältnis der Anzahl
+sichtbarer Zeilen zur Gesamt-Anzahl Zeilen des Gedichts wiederspiegeln. Sinngemäss gilt dasselbe
+auch für den horizontalen Schieber.
 
-The following function returns a number from 0 to 1000 based on the required size of the 
-slider.  This is calculated based on the number of lines or characters available (which the 
-size of window would permit) and the number of lines or characters actually shown (which 
-are displayed by the draw code).
+Die folgende Funktion gibt eine Zahl von 0 bis 1000 zurück, basierend auf der benötigten
+Grösse des Schiebers. Diese Zahl wird berechnet basierend auf der Anzahl verfügbarer Zeilen
+(zugelassen durch die Fenster-Grösse) sowie die Zahl der Zeilen bzw. Zeichen, die tatsächlich
+sichtbar sind (die vom Zeichnungs-Code angezeigt werden).
 
 [source,c]
 ----
 int slider_size (int num_available, int num_shown) {
 	int result;
 
-	/* in case number shown is smaller than those available */
-	if (num_available >= num_shown) { /* all visible 		   <1> */
-		result = 1000; /* so slider complete */
+	/* Falls die angezeigte Zahl kleiner ist als die verfügbare */
+	if (num_available >= num_shown) { /* alle sichtbar		   <1> */
+		result = 1000; /* also Schieber vollständig */
 	} else {
 		result = (1000 * (long)num_available) / num_shown;	// <2>
 	}
@@ -1116,34 +1117,36 @@ int slider_size (int num_available, int num_shown) {
 	return result;
 }
 ----
-<1> Check if all the display will fit in the window: result is 1000 if so.
-<2> Otherwise, find the fraction of 1000, using long multiplication for accuracy.
+<1> Prüfe, ob das ganze Display ins Fenster passt: Resultat entspricht in dem Falle 1000.
+<2> Andernfalls finde den Teil von 1000, mittels long-Multiplikation für höhere Genauigkeit
 
-The _position_ of the slider depends on three parameters: the number of lines or 
-characters available, the number shown, and the current offset from the top or left.
-Again, if the number available exceeds the number to be shown, then the slider is 
-simply at position 0 (the top or left).  
+Die _Position_ des Schiebers hängt von drei Parametern ab: Der Anzahl verfügbarer
+Zeilen oder Zeichen, der Anzahl sichtbarer Zeilen / Zeichen, sowie dem aktuellen
+Versatz (Offset) von oben bzw. links. Nochmal: Wenn die Anzahl verfügbarer Zeilen
+oder Zeichen die der anzuzeigenden überschreitet, ist der Schieber einfach an Position
+0 (oben oder links).
 
-Before working out the proportion, we need to compute the "scrollable region". This 
-is the number of positions along which the slider can move.  For example, if we have 
-a 500 line text, and 50 lines can be displayed at a time, the top line can be moved 
-from line 1 to line 450: so the scrollable region for the vertical slider is 450 lines.
+Bevor wir das Verhältnis ermitteln müssen wir den "scrollbaren Bereich" berechnen.  Dies
+ist die Anzahl von Positionen entlang derer der Schieber bewegt werden kann. Beispiel:
+Wenn wir einen Text mit 500 Zeilen haben, und 50 Zeilen auf einmal angezeigt werden können,
+kann die erste sichtbare Zeile von Zeile 1 bis 450 reichen: Der scrollbare Bereich für
+den vertikalen Schieber ist also 450 Zeilen.
 
-The position of the slider is then computed as 1000 * offset / scrollable_region.
+Die Position des Schiebers wird sodann berechnet als 1000 * offset / scrollable_region.
 
-As the ST does not support floating point calculations, the code below computes 
-that fraction using integer division and modulus, and can be used everywhere.
+Da der ST keine Fliesskomma-Operationen unterstützt, berechnet der nachfolgende Code
+diese Werte mittels Integer-Division und Modulus, und kann überall verwendet werden.
 
 [source,c]
 ----
 int slider_posn (int num_available, int num_shown, int offset) {
 	int result;
 
-	/* in case number shown is smaller than those available */
-	if (num_available >= num_shown) { /* all visible */
-		result = 0; /* so slider complete, and show bar at top position */
+	/* Falls die angezeigte Zahl kleiner ist als die verfügbare */
+	if (num_available >= num_shown) { /* alles sichtbar */
+		result = 0; /* also Schieber vollständig, und an oberer Position */
 	} else {
-		/* number of positions scrollbar can move across: must be positive due to above check */
+		/* Anzahl der Positionen entlang derer der Schieber bewegt werden kann: Muss positiv sein wg. vorherigem Check */
 		int scrollable_region = num_shown - num_available;
 		int tmp1 = offset / scrollable_region;
 		int tmp2 = offset % scrollable_region;
@@ -1155,11 +1158,13 @@ int slider_posn (int num_available, int num_shown, int offset) {
 }
 ----
 
-Given the above two functions, it is now straightforward to update the sliders.
-Our function simply finds the available numbers of lines and columns, based 
-on the work area of the screen, and then each slider size and position can be 
-updated.  The offset to the sliders is recorded in +wd->vert_posn+ and +wd->horz_posn+: 
-these will be updated when the events, such as moving down a line, are processed.
+Mit den beiden obigen Funktionen ist das aktualisieren der Schieber nun eine
+einfache Sache. Unsere Funktion ermittelt einfach die verfügbare Anzahl Zeilen
+und Spalten basierend auf dem Arbeitsbereich des Screens, danach kann jede
+Schieber-Grösse und -Position entsprechend aktualisiert werden. Der Offset des
+Schiebers wird gespeichert in +wd->vers_posn+ und +wd->horz_posn+: Diese Felder
+werden aktualisiert wenn Events, etwa für das runterschieben um eine Zeile,
+verarbeitet werden.
 
 [source,c]
 ----
@@ -1184,12 +1189,14 @@ void update_sliders (struct win_data * wd) {
 		  slider_posn (cols_avail, wd->colns_shown, wd->horz_posn), 0, 0, 0);
 }
 ----
-<1> Find the number of lines available to show in the current window, by 
-    dividing the current height by the number of pixels in a given line.
-<2> Find the number of columns available to show in the current window, by 
-    dividing the current width by the number of pixels in a given character.
-<3> Update the vertical slider size and position.
-<4> Update the horizontal slider size and position.
+<1> Ermittelt die Anzahl verfügbarer Zeilen zur Anzeige im aktuellen Fenster,
+    indem die aktuelle Höhe in Pixeln geteilt wird durch die Anzahl Pixel
+    der Höhe einer Zeile.
+<2> Ermittelt die Anzahl verfügbarer Spalten zur Anzeige im aktuellen Fenster,
+    indem die aktuelle Breite in Pixeln geteilt wird durch die Anzahl Pixel
+    der Breite eines Zeichens.
+<3> Aktualisiert Grösse und Position des vertikalen Schiebers.
+<4> Aktualisiert Grösse und Position des horizontalen Schiebers.
 
 === Drawing a Window with Sliders
 
