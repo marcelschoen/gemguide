@@ -1249,54 +1249,54 @@ void draw_example (int app_handle, struct win_data * wd, int x, int y, int w, in
 
 }
 ----
-<1> We have to leave out the lines above the current vertical slider position.
-<2> The next y position in the window at which to display text.
-<3> Clear the current lines shown in the display (height).
-<4> Clear the current columns shown in the display (width). 
-<5> When we have ignored the lines above the current vertical slider position, 
-    we can display the next line of text.
-<6> Update the current columns shown if the current line is wider.
-<7> Move the y position down a line.
-<8> Otherwise, reduce the number of lines to ignore by 1.
-<9> Increase the number of lines shown in the display.
+<1> Wir müssen die Zeilen über der aktuellen vertikalen Schieber-Position weglassen.
+<2> Die nächste y Position im Fenster, an der Text angezeigt wird.
+<3> Lösche die Anzahl aktuell angezeigter Zeilen.
+<4> Lösche die Anzahl aktuell angezeigter Spalten (Breite).
+<5> Wenn wir die Zeilen über der aktuellen vertikalen Schieber-position übersprungen
+    haben, können wir die nächste Text-Zeile anzeigen
+<6> Aktualisiert die aktuelle Anzahl angezeigter Spalten, wenn die aktuelle Zeile breiter ist.
+<7> Verschiebt die y Position um eine Zeile nach unten.
+<8> Andernfalls reduziere die Anzahl zu ignorierender Zeilen um 1.
+<9> Erhöhe die Anzahl angezeigter Zeilen um 1.
 
-The display of the window contents will depend on your window.  The example above 
-is suitable for lines of text.  For a graphical display, you may have a fixed size 
-for the window, which means some of the calculations can be simplified.
+Die Anzeige des Fenster-Inhalts hängt von Ihrem Fenster ab. Das obige Beispiel
+passt für Text-Zeilen. Für eine grafische Anzeige mag es sinnvoll sein, eine
+fixe Grösse für das Fenster zu nutzen, was einige der Berechnungen einfacher macht.
 
-=== Updating the Sliders
+=== Schieber aktualisieren
 
-The sliders must be checked and changed whenever the window size or contents 
-are altered.  In practice, we need only alter the sliders when we update the 
-contents of the window.  The most suitable place for this is at the end of 
-+draw_interior+.
+Die Schieber müssen geprüft und aktualisiert werden, sobald sich die Fenster-Grösse
+oder der Inhalt verändern. In der Praxis heisst das, dass wir die Schieber immer
+dann ändern, wenn wir den Fenster-Inhalt aktualisieren. Der beste Platz dafür ist
+am Ende von +draw_interior+.
 
 [source,c]
 ----
 void draw_interior (struct win_data * wd, GRECT clip) {
 
-	/* REST OF FUNCTION */
+	/* REST DER FUNKTION */
 	
 	set_clip (false, clip);
 	update_sliders (wd); 		// <1>
 	graf_mouse (M_ON, 0L);
 }
 ----
-<1> Call the function to update the sliders size and position, based on 
-    the revised height and width of the displayed contents.
+<1> Ruft die Funktion für das aktualisieren der Schieber-Grösse und -Position
+    auf, basierend auf der angepassten Höhe und Breite des angezeigten Inhalts.
 
-The sliders need adapting also whenever the window size changes.  We do this 
-within +do_sized+ by changing the +horz_posn+ and +vert_posn+ values to 
-reflect the change in size of the window.  If, for example, a window is made 
-larger, then it will display more information, and we can reduce the number 
-of lines off the top of the window.
+Die Schieber müssen ausserdem auch immer dann angepasst werden, wenn sich die
+Fenster-Grösse ändern. Das erledigen wir innerhalb von +do_sized+, durch verändern
+der +horz_posn+ und +vert_posn+ Werte, so dass sie der neuen Fenster-Grösse entsprechen.
+Wenn das Fenster beispielsweise vergrössert wird, kann es mehr Inhalt anzeigen, und
+wir können die Anzahl Zeilen über dem oberen Fensterrand reduzieren.
 
-The sliders themselves will be updated automatically as setting a new window 
-size will trigger a redraw event, which also updates the slider sizes and 
-positions.  Unfortunately, that redraw event will only apply to the newly 
-exposed parts of the window: if we have moved the horizontal or vertical 
-position, then all the contents will need redrawing, and we will need to 
-trigger that redraw ourselves.
+Die Schieber selbst werden automatisch aktualisiert, da das setzen einer neuen
+Fenster-Grösse einen REDRAW-Event auslöst, welcher auch die Schieber-Grössen und
+-Positionen aktualisiert. Unglücklicherweise passt dieser REDRAW-Event nur zu den
+neu sichtbar gemachten Teilen des Fensters: Wenn wir die horizontale oder vertikale
+Position verschoben haben, müssen wir den ganzen Inhalt neu zeichnen, und müssen
+den REDRAW-Event selber auslösen.
 
 [source,c]
 ----
@@ -1308,22 +1308,22 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 	if (msg_buf[7] < MIN_HEIGHT) msg_buf[7] = MIN_HEIGHT;
 
 	// <2>
-	new_height = (msg_buf[7] / wd->cell_h) + 1; /* find new height in characters */
-	new_width = (msg_buf[6] / wd->cell_w) + 1;  /* find new width in characters */
+	new_height = (msg_buf[7] / wd->cell_h) + 1; /* Neue Höhe in Zeichen */
+	new_width = (msg_buf[6] / wd->cell_w) + 1;  /* Neue Breite in Zeichen */
 
-	/* if new height is bigger than lines_shown - vert_posn,
-	   we can decrease vert_posn to show more lines */
+	/* Wenn die neue Höhe grösser ist als lines_shown - vert_posn,
+	   können wir vert_posn dekrementieren, um mehr Zeilen anzuzeigen. */
 	if (new_height > wd->lines_shown - wd->vert_posn) {	// <3>
 		wd->vert_posn -= new_height - (wd->lines_shown - wd->vert_posn);
 		if (wd->vert_posn < 0) wd->vert_posn = 0;
 		changed = true;					// <4>
 	}
-	/* if new height is less than lines_shown - vert_posn,
-	   we leave vertical position in same place,
-	   so nothing has to be done 				   <5> */
+	/* Wenn die neue Höhe kleiner ist als lines_shown - vert_posn,
+	   belassen wir die vertikale Position unverändert, es muss
+	   also nichts gemacht werden.                 <5> */
 
-	/* similarly, if new width is bigger than colns_shown - horz_posn,
-	   we can decrease horz_posn to show more columns */
+	/* Ähnliches gilt, wenn die neue Breite grösser ist als colns_shown - horz_posn;
+	   in dem Falle können wir horz_posn dekrementieren um mehr Spalten anzuzeigen. */
 	if (new_width > wd->colns_shown - wd->horz_posn) {	// <6>
 		wd->horz_posn -= new_width - (wd->colns_shown - wd->horz_posn);
 		if (wd->horz_posn < 0) wd->horz_posn = 0;
@@ -1341,17 +1341,19 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 	}
 }
 ----
-<1> Introduce a flag to indicate if the top or side of display has changed.
-<2> +new_height+ and +new_width+ are the number of characters that will fit 
-    vertically and horizontally in the new window size.
-<3> If the height has increased, we can show more lines, and so reduce the 
-    number of lines off the top of the window.
-<4> Set the flag to trigger an update, as the top of the display has moved.
-<5> If the height has decreased, we leave the top line where it is.
-<6> Similarly, alter the left column only if the window has got wider.
-<7> Setting the new window size will trigger a redraw event, updating the 
-    new part of the display and sliders, if required.
-<8> Request a redraw of the entire window.
+<1> Vergleicht ein Flag um festzustellen, ob sich der obere Rand oder die
+    Seiten der Anzeige verändert haben.
+<2> +new_height+ und +new_width+ sind die Anzahl Zeichen, die vertikal und
+    horizontal in der neuen Fenster-Grösse platz haben.
+<3> Wenn die Höhe vergrössert wurde, können wir mehr Zeilen anzeigen, und
+    so die Anzahl Zeilen über dem oberen Fensterrand verringern.
+<4> Setzt das Flag um einen Update auszulösen, wenn der obere Rand des
+    Displays bewegt wurde.
+<5> Wenn die Höhe reduziert wurde, lassen wir die oberste Zeile wo sie ist.
+<6> Äquivalent ändern wir die linke Spalte nur, wenn das Fenster breiter gemacht wurde.
+<7> Das setzen der neuen Fenster-Grösse wird einen REDRAW-Event auslösen, wobei
+    der neue Teil des Fensters und die Schieber aktualisiert werden, falls nötig.
+<8> Löst einen REDRAW des ganzen Fensters aus.
 
 === Slider Events
 
