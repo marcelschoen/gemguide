@@ -1355,12 +1355,12 @@ void do_sized (struct win_data * wd, int * msg_buf) {
     der neue Teil des Fensters und die Schieber aktualisiert werden, falls nötig.
 <8> Löst einen REDRAW des ganzen Fensters aus.
 
-=== Slider Events
+=== Schieber Events
 
-The sliders can be moved directly, by dragging them with the mouse.  These
-events have their own message type, one for the vertical and one for the 
-horizontal slider.  +msg_buf[4]+ contains the new position of the slider, as 
-a number between 0 (top/left) and 1000 (bottom/right).
+Die Schieber (Slider) können direkt bewegt werden, indem man sie mit der Maus zieht.
+Diese Events haben ihren eigenen Message-Typ, einen für den vertikalen und einen für
+den horizontalen Schieber. +msg_buf[4]+ enthält die neue Position des Schiebers, als
+Zahl zwischen 0 (oben / links) und 1000 (unten / rechts).
 
 [source,c]
 ----
@@ -1374,14 +1374,15 @@ case WM_HSLID:
 	do_hslide (wd, msg_buf[4]);
 	break;
 ----
-<1> I force the window to the top when moving the slider: in Mint, it 
-    is possible to grab the slider and move it, leaving the window in 
-    the background.  I think this is a flaw, hence the forced top.
-<2> Call the code to handle the slider, along with its new position.
+<1> Ich hole das Fenster in den Vordergrund, wenn der Schieber bewegt wird.
+    In MINT ist es möglich, den Schieber zu packen und zu bewegen und das
+    Fenster dabei im Hintergrund zu lassen. Ich denke das ist ein Mangel
+    und hole das Fenster darum forciert hervor.
+<2> Aufruf des Codes um den Schieber zu handhaben, zusammen mit seiner neuen Position.
 
-The code to handle the slider update requires us to compute any change 
-to the top line.  The new vertical position reflects the location of 
-the new slider position along the scrollable region.
+Der Code zum aktualisieren des Schiebers setzt voraus, dass wir Änderungen
+der ersten Zeile im voraus berechnen. Die neue vertikale Position entspricht
+dem Standort der neuen Schieber-Position entlang des scrollbaren Bereichs.
 
 [source,c]
 ----
@@ -1397,29 +1398,31 @@ void do_vslide (struct win_data * wd, int posn) {
 	do_redraw (wd, &r);					// <5>
 }
 ----
-<1> Find the new number of lines available.
-<2> Compute the new vertical position in the displayed text.
-<3> Ensure this new position is valid.
-<4> Update the position of the vertical slider.
-<5> Redraw the contents of the window (this is not automatic).
+<1> Ermittelt die neue Anzahl verfügbarer Zeilen.
+<2> Berechnet die neue vertikale Position im angezeigten Text.
+<3> Stellt sicher, dass dies eine gültige Position ist.
+<4> Aktualisiert die Position des vertikalen Schiebers.
+<5> Zeichnet den Inhalt des Fensters (geschieht nicht automatisch).
 
-The code for handling the horizontal slider is very similar.
+Der Code für die Interaktion mit dem horizontalen Schieber ist
+im gleichen Stil aufgebaut.
 
-=== Arrow Events
+=== ARROW Events
 
-The remaining events are all known as "arrow" events: the AES sends the 
-application a message that an arrow event has occurred, and passes the 
-arrow type in +msg_buf[4]+.  
+Die verbleibenden Events sind alle als "Pfeil" ("Arrow") Events bekannt: Das
+AES schickt der Applikation eine Message dass ein ARROW-Event passiert ist,
+und übergibt den Pfeil-Typ in +msg_buf[4]+.
 
 [source,c]
 ----
 case WM_ARROWED:
-	wind_set (msg_buf[3], WF_TOP, 0, 0); /* bring to the top   <1> */
+	wind_set (msg_buf[3], WF_TOP, 0, 0); /* in den Vordergrund bringen   <1> */
 	do_arrow (wd, msg_buf[4]);				// <2>
 	break;
 ----
-<1> As with the sliders, we force the window to the top if the arrows are used.
-<2> Call out to the arrow handling code, with the arrow type as a parameter.
+<1> Wie bei den Schiebern bringen wir das Fenster in den Vordergrund, wenn die
+    Pfeile benutzt werden.
+<2> Aufruf des Pfeil-Handling Codes, mit dem Pfeil-Typ als Parameter.
 
 +do_arrow+ simply calls the appropriate function based on the arrow type.
 
