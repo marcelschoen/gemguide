@@ -1675,56 +1675,61 @@ und separat behandelt werden.
 
 == Die Info Zeile
 
-This is a simple to use part of the GEM window.  The info line can be seen in a 
-standard desktop window: it is the strip that says how many bytes and items 
-there are in the displayed folder.  
+Dies ist ein einfach zu nutzender Teil des GEM Fensters. Die Info-Zeile sieht
+man in einem Standard Desktop-Fenster: Es ist der Streifen in dem steht wie
+viele Bytes und Objekte der angezeigte Ordner enthält.
 
-We can easily use an info line in our program.  First, when we create a window, 
-we must tell it to include the info line by including +INFO+ in the list of parts.
-Second, at any point, we can place some contents into the info line.
+Wir können unserem Programm sehr einfach eine Info-Zeile hinzufügen. Zuerst
+müssen wir dem Fenster, wenn wir es erzeugen, mitteilen, dass es eine Info-Zeile
+beinhalten soll, indem wir +INFO+ der Element-Liste hinzufügen. Zweitens können
+wir an jedem Punkt Inhalt in unsere Info-Zeile platzieren.
 
-We could include an info line for our poem display, to hold the number of lines.
-Referring to version 5, we would include +INFO+ in the parts for the 
-window.  Then, after the window has beeen created, we can write:
+Wir könnten eine Info-Zeile für unser Gedicht hinzufügen, welche die Anzahl Zeilen
+anzeigt. Bezüglich Version 5 könnten wir +INFO+ in der Element-Liste des Fensters
+hinzu addieren. Wenn dann das Fenster erzeugt wurde, können wir Text mittels
+folgendem Code in die Info-Zeile schreiben:
 
 [source,c]
 ----
 	wind_set (wd->handle, WF_INFO, "57 lines");
 ----
 
-As with the title, you need to have some dedicated storage for the string passed 
-to info as GEM will use your pointer and not make a copy.  Length in GEM is 
-restricted to 80 characters (although most AES replacements extend this).
+Genauso wie auch beim Fenster-Titel braucht es einen dedizierten Speicherplatz
+für den String, da GEM den von uns angegebenen Zeiger benutzt, und keine Kopie
+des Strings macht. Die Länge ist in GEM auf 80 Zeichen beschränkt (wobei die
+meisten AES Alternativen dieses Limit erweitern).
 
 
-== Menus
+== Menüs
 
-The menu bar is a convenient way of interacting with our programs.  A menu 
-bar is defined within an RSC file, which is a file containing all the 
-resources, such as menu bars and dialogs, used by our program.  The RSC 
-file is created by an external program: there are several available, but 
-I use Resource Master 3.65.  When started, our program must load in its 
-RSC file, and access the required information to show menu bars and dialogs.
+Der Menü-Balken ist ein praktischer Weg der Interaktion mit unserem Programm. Ein
+Menü-Balken wird in eineR RSC-Datei definiert, welche alle Ressourcen unseres
+Programmes (wie Menü-Balken und Dialoge) enthält. Die RSC-Datei wird mit einem
+externen Werkzeug erstellt: Es gibt dafür mehrere, aber ich benutze "Resource
+Master 3.65". Nach dem Start muss unser Programm seine RSC-Datei laden und die
+benötigten Informationen auslesen, um Menü-Balken und Dialoge anzuzeigen.
 
-Menus, in GEM, typically appear at the top of the screen.  The menu bar 
-can contain several menus.  Each menu has a title, and can contain a number 
-of menu items.  Each menu item may have an associated key command.  Also, 
-menu items may be disabled (meaning they cannot be selected), or have a 
-check mark showing.  Menus can also contain separator items, which are 
-horizontal lines to divide the menu into groups.  The image below 
-illustrates these elements:
+Menüs erscheinen in GEM typischerweise am oberen Bildschirm-Rand. Der Menü-Balken
+kann mehrere Menüs enthalten. Jedes Menü hat einen Titel und kann eine Anzahl
+Elemente (Items) enthalten. Jedes Menü-Item kann mit einem Tastatur-Befehl
+verbunden werden. Ausserdem können Menü-Items deaktiviert werden (so dass sie
+nicht mehr anwählbar sind), oder mit einem Häkchen-Icon versehen werden.
+Menüs können auch Trenner-Items (Separators) enthalten - horizontale Linien,
+die das Menü in Gruppen unterteilen. Das untere Bild zeigt diese Elemente:
 
-IMAGE OF MENU
+BILD EINES MENUS
 
-Menus also provide access to the desk accessories.  The convention is that 
-the first menu item, on the left, refers to the program name, and contains 
-a single item, which opens a dialog showing information about the program.
-This first menu item is followed by a separator, and then a list of desk 
-accessories (or "Clients" in Mint).
+Menüs bieten auch Zugriff auf die Desk-Accessories. Als Konvention gilt dass
+das erste Menü links den Programm-Namen enthält, und einen einzigen Menü-Punkt,
+der einen Dialog öffnet welcher Informationen über unser Programm anzeigt
+(z.B. Author, Version, Erstellungsdatum..). Der erste Menü-Punkt ist gefolgt
+von einem Separator, und dann kommt die Liste der Desk-Accessories (oder
+"Clients" in MINT).
 
-Interactions with the menu are simple: when a menu item is clicked on with 
-the mouse, a message is sent to the program indicating that the menu has been 
-used.  This message contains information about the menu item that was clicked.
+Interaktionen mit dem Menü sind simpel. Wenn ein Menü-Punkt mit der Maus
+angeklickt wird, bekommt das Programm eine Message die anzeigt, dass das
+Menü benutzt wurde. Diese Message enthält Informationen über den angeklickten
+Menü-Punkt.
 
 === The RSC and rsh files
 
