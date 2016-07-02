@@ -1900,25 +1900,25 @@ Der Code um dies zu kontrollieren benutzt dieselben Parameter wie +menu_ienable+
 menu_icheck (menu_addr, OBJECT, flag);
 ----
 
-Finally, it is possible to change the text showing on a menu item, 
-with the call:
+Und zu guter Letzt ist es auch möglich, den angezeigten Text eines Menü-Punktes
+zu verändern, mit dem Aufruf:
 
 [source,c]
 ----
 menu_text (menu_addr, OBJECT, str); // <1>
 ----
-<1> +str+ must be a statically allocated string.  Remember to keep 
-    two spaces at the start of the string.
+<1> +str+ muss ein statisch allozierter String sein. Denken Sie daran, dass der
+          String am Anfang zwei Leerzeichen (blanks) haben muss.
 
-The sample program does not have a good reason to use checked menu items
-or to disable items, so there is a menu provided just to try out these 
-options.  One menu item controls whether the other is enabled or not, and 
-shows a check mark if it is enabled.  For good measure, the altered menu item
-also has its text changed.  We store the state for this as 
-a global variable, +menu_state+; in a real application the state will likely 
-depend on the top-most window's contents, and so be stored within +win_data+.
+Das Beispiel-Programm hat nicht wirklich einen Grund, Menü-Items mit Häkchen
+zu markieren, weshalb es ein Menü hat nur um dies auszuprobieren. Ein Menü-Punkt
+kontrolliert ob der andere aktiviert ist oder nicht, und zeigt ein Häkchen an
+wenn er aktiviert ist. Der Vollständigkeit halber wird beim behandelten Menü-Punkt
+auch der angezeigte Text verändert. Wir speichern den Status dafür als eine globale
+Variable, +menu_state+; in einer richtigen Applikation wird der Status wahrscheinlich
+vom Inhalt des vordersten Fensters abhängen, und deshalb in +win_data+ abgelegt sein.
 
-The action is handled directly in +do_menu+:
+Die Aktion wird direkt behandelt in +do_menu+:
 
 [source,c]
 ----
@@ -1930,44 +1930,46 @@ The action is handled directly in +do_menu+:
 			   (menu_state ? "  Enabled" : "   Disabled"));
 		break;
 ----
-<1> Invert the state.
-<2> Set the status of the SWITCH menu item's check sign.
-<3> Set the enabled/disabled status of the DUMMY menu item.
-<4> Change the text on the DUMMY menu item.
+<1> Invertiert den Status.
+<2> Setzt den Status des Häkchens des SWITCH Menü-Punktes
+<3> Setzt den aktiv/deaktiviert Status des DUMMY Menü-Punkts
+<4> Ändert den Text des DUMMY Menü-Punktes.
 
 
-=== Responding to Keyboard Events
+=== Auf Keyboard-Events reagieren
 
-This is an appropriate time to extend the range of events we can respond to.
-Important menu items should contain keyboard shortcuts, for users who prefer 
-not to take their hands from the keyboard.  Keyboard events are sent to our 
-program just like other events, but we must listen for them.  To do so, we 
-must change our event loop to handle multiple event types.
+Dies ist der richtige Zeitpunkt um die Auswahl an Events, auf die wir reagieren
+können, zu erweitern. Wichtige Menü-Punkte sollten Keyboard-Shortcuts enthalten,
+für Benutzer die es bevorzugen, ihre Hände nicht von der Tastatur zu nehmen.
+Keyboard Events werden an unser Programm geschickt wie alle anderen Events,
+aber wir müssen sie verarbeiten. Um das zu tun müssen wir unseren Event-Loop
+so erweitern dass er mehrere verschiedene Event-Typen verarbeitet.
 
-Any GEM program may produce one or more of a range of different event types.
-These include:
+Jedes GEM-Programm kann einen oder mehrere Arten von Events erzeugen. Unter
+anderem folgende:
 
-* AES messages (as we have handled so far)
-* Mouse events: information on the mouse position and which buttons are clicked
-* Timer events: an event triggered at regular time intervals
-* Keyboard events: triggered when the user types on the keyboard
+* AES Messages (was wir bisher behandelt haben)
+* Maus Events: Information über die Maus-Position und welche Maustasten gedrückt wurden
+* Timer Events: Ein Event, der in bestimmten Intervallen ausgelöst wird.
+* Tastatur Events: Ausgelöst wenn der Benutzer auf der Tastatur tippt.
 
-Although GEM provides separate event listeners for these different types, in 
-any real GEM program multiple event types will be needed.  For example, any
-GEM program will need to respond to AES messages, mouse events and the 
-keyboard, at a minimum; to do this, we use a multiple-event listener.
+Obwohl GEM separate Event-Listener für diese verschiedenen Typen bereitstellt,
+muss jedes richtige GEM-Programm mehrere dieser Event-Typen verarbeiten. Zum
+Beispiel wird jedes GEM-Programm auf AES Messages sowie Maus- und Keyboard-Events
+reagieren müssen (mindestens); dafür benutzen wir einen mehrfach-Event Listener.
 
-There are two ways to handle multiple event types.  There is the _traditional_
-way, which uses a call to +event_multi+.  This requires setting up several 
-internal variables to store any required return values.  AHCC offers an 
-alternative way, which uses a call to +EvntMulti+, using a single structure 
-to hold all return values.  The advantage of +event_multi+ is conformance 
-to previous practice.  The advantage of +EvntMulti+ is a simpler calling 
-routine; the AHCC description also claims improved performance.  We shall 
-cover both ways.
+Es gibt zwei Wege, mehrere Event-Typen zu verarbeiten. Dies ist der _traditionelle_
+Weg welcher die Funktion +event_multi+ aufruft. Dies bedingt einige interne
+Variablen um die benötigten Rückgabe-Werte zu speichern. AHCC offeriert uns einen
+alternativen Weg, welcher einen Aufruf von +EvntMulti+ benutzt, mit einer einzigen
+Datenstruktur die alle Rückgabewerte speichert. Der Vorteil von +event_multi+ ist
+dass es dem üblichen Standard-Vorgehen entspricht. Der Vorteil von +EvntMulti+ ist
+dass es einfacher ist; die AHCC Beschreibung nennt ausserdem eine bessere
+Performance als weiteren Vorteil. Wir werden beide Optionen anschauen.
 
 
-==== Traditional event_multi
+==== Traditionell mit event_multi
+
 
 The traditional +event_multi+ function is an extension of the +event_mesag+ 
 we have been using so far.  It offers the advantage of being documented in 
