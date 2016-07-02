@@ -1731,28 +1731,30 @@ angeklickt wird, bekommt das Programm eine Message die anzeigt, dass das
 Menü benutzt wurde. Diese Message enthält Informationen über den angeklickten
 Menü-Punkt.
 
-=== The RSC and rsh files
+=== Die RSC und rsh Dateien
 
-Before our program can use a menu, we need to build the menu in a resource 
-construction program (such as Resource Master) and save it as a RSC file.  
-Our program also needs a way of associating the clicked on menu item with 
-the information sent in the message event.  This information is contained 
-in a set of symbol definitions, saved by the resource constructon program 
-in a .rsh file (or equivalent).
+Bevor unser Programm ein Menü benutzen kann, müssen wir es mit einem
+Resource-Editor (wie "Resource Master") erstellen und in einer RSC-Datei
+speichern. Unser Programm braucht auch eine Möglichkeit, einen angeklickten
+Menüpunkt mit der Information in einem erhaltenen Event in Verbindung zu
+bringen. Diese Informationen sind in einer Liste von Symbol-Definitionen
+abgelegt, vom Resource-Editor gespeichert in einer .rsh-Datei (oder einem
+Äquivalent).
 
-TIP: It is standard practice to name our .RSC file using the program name.  
-Do _not_ use your program name for a .C source file.  For example, if your 
-program is 'sokoban', we will have 'sokoban.rsc'.  Do _not_ name one of 
-your source files 'sokoban.c'.  ResourceMaster, for example, will export 
-a .c file if you choose to build a desk accessory, and this will overwrite 
-any source files of the same name.  For safety, only use your program name 
-as the .PRG name in your project file, and as the .RSC name.
+TIPP: Als übliche Konvention gilt, die .RSC-Datei gleich zu benennen wie
+unser Programm. WICHTIG: Nennen Sie niemals ihre C Quelldateien wie ihr
+Programm. Wenn Sie z.B. ein Programm namens "sokoban" schreiben, haben
+Sie eine "sokoban.rsc" Datei. "Resource Master" etwa exportiert eine .c-Datei,
+wenn Sie ein Desk-Accessory erstellen wollen, und dies wird eine existierende
+.c-Datei gleichen Namens überschreiben. Benutzen Sie daher sicherheitshalber
+den Programmnamen nur für die .PRG- sowie die .RSC-Dateien.
 
-As we create each menu item, we associate with that menu item a symbol, 
-used to name it.  When we export the C header file, we get a file containing
-symbol definitions for each menu item.  For Resource Master, the output looks
-something like the following.  Note that the symbol 'ABOUT' attached to the 
-'About' menu item has been prefixed with the symbol for the main menu itself.
+Während wir nun alle die Menüpunkte (Items) erstellen, definieren wir zu jedem
+ein Symbol das benutzt wird, um es zu referenzieren. Wenn wir die C-Header-Datei
+exportieren erhalten wir eine Datei mit Symbol-Definitionen für jedes Menü-Item.
+Für "Resource Master" sieht die Ausgabe etwa so aus wie folgt. Beachten Sie
+dass das Symbol "ABOUT", welches dem "About"-Menüpunkt zugeordnet ist, einen
+Präfix erhalten hat mit dem Symbol für das Hauptmenü.
 
 ----
  /*  Resource C-Header-file v1.95 for ResourceMaster v2.06&up by ARDISOFT  */
@@ -1771,13 +1773,13 @@ source code.  We do this by adding a line in "windows.h", for example:
 #include "version7.rsh"
 ----
 
-=== Showing a Menu
+=== Ein Menü anzeigen
 
-Before we can show the menu, our program must open the .RSC file.  We must 
-check the file has opened successfully before proceeding.  Having done 
-this, we can extract the menu bar and show it.  Once our program has 
-finished, we should remove the menu bar.  Our +start_program+ function is 
-accordingly modified, as follows:
+Bevor wir ein Menü anzeigen können muss unser Programm die .RSC-Datei öffnen.
+Wir müssen prüfen ob die Datei erfolgreich geöffnet wurde bevor wir weiterfahren.
+Danach können wir das Menü extrahieren und anzeigen. Wenn unser Programm beendet
+wird, sollten wir das Menü entfernen. Unsere +start_program+ Funktion wurde
+entsprechend angepasst:
 
 [source,c]
 ----
