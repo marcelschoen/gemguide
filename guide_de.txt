@@ -1645,9 +1645,9 @@ struct win_data * get_win_data (struct win_data * wd, int handle) {
 <2> Beende die Suche wenn der aktuelle Handle dem Ziel-Handle entspricht.
 <3> Geht weiter zum nächsten Fenster in der Liste.
 
-Finally, each event which requires an instance of +win_data+ must first find 
-the correct +win_data+ based on the window handle which triggered the event.
-For example, the REDRAW event now looks like:
+Zum Schluss muss jeder Event, der eine Instanz von +win_data+ braucht, zuerst
+die korrekte +win_data+ Struktur finden, basierend auf dem Fenster-Handle, der
+den Event ausgelöst hat. Zum Beispiel sieht der REDRAW Event jetzt so aus:
 
 [source,c]
 ----
@@ -1656,22 +1656,24 @@ case WM_REDRAW:
 		   (GRECT *)&msg_buf[4]);
 	break;
 ----
-<1> Find the +win_data+ corresponding to the windw handle which triggered this event.
+<1> Findet die +win_data+ Struktur, die mit dem Fenster-Handle des Events korrespondiert.
 
-The close event may need some care.  In this example, clicking close for any 
-window will quit the application.  If you wish to have a more dynamic system, 
-with windows that can open and close at arbitrary times, you will need to 
-process the closed event based on the window handle.  For an example of doing 
-this see my Sokoban program, discussed later.
+Der Schliess-Event benötigt etwas spezielle Aufmerksamkeit. In diesem Beispiel
+wird durch das Anklicken jeder Schliessbox (jedes Fensters) die Applikation
+beendet. Wenn Sie ein dynamischeres System wünschen, in dem Fenster beliebig
+geöffnet und geschlossen werden können, müssen Sie den Event abhängig vom
+Fenster-Handle behandeln. Schauen Sie sich mein Sokoban Programm, das wir
+später besprechen, für ein Beispiel an.
 
-=== Sample Program: Version 6
+=== Beispiel Programm: Version 6
 
-Version 6 provides a display with three displayed poems.  Notice how 
-few changes were required to the source code, but the final system is very 
-flexible: each window can be moved, resized and handled separately.
+Version 6 enthält eine Anzeige mit drei sichtbaren Gedichten. Beachten Sie
+wie wenige Anpassungen des Quellcodes nötig sind, doch das finale System
+ist sehr flexibel: Jedes Fenster kann bewegt, vergrössert oder verkleinert
+und separat behandelt werden.
 
 
-== The Info Line
+== Die Info Zeile
 
 This is a simple to use part of the GEM window.  The info line can be seen in a 
 standard desktop window: it is the strip that says how many bytes and items 
