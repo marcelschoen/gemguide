@@ -1807,44 +1807,46 @@ void start_program (void) {
 	}
 }
 ----
-<1> Attempt to load the RSC file.  If it fails to load, display a dialog, 
-    and then abort the program.
-<2> Create a local variable to hold the address of the menu.
-<3> Retrieve the menu from the RSC data.  We provide the name of the 
-    menu +MAIN_MENU+, and the address to store the menu's address.
-<4> Display the menu bar for our application.
-<5> +menu_addr+ is also passed to the +event_loop+.
-<6> Remove the menu bar, which frees up its resources.
+<1> Versucht, die RSC Datei zu laden. Falls dies fehlschlägt wird ein
+    Dialog angezeigt und das Programm abgebrochen.
+<2> Erzeugt eine lokale Variable um die Adresse des Menüs darin abzulegen.
+<3> Extrahiert das Menü aus den RSC Daten. Wir übergeben den Namen des
+    Menüs +MAIN_MENU+, und die Adresse um die Menü-Adresse zu speichern.
+<4> Zeigt den Menü-Balken für unsere Applikation.
+<5> +menu_addr+ wird auch an den +event_loop+ übergeben.
+<6> Entfernt den Menü-Balken, was Resourcen freigibt.
 
-NOTE: +rsrc_load+ likes the filename in capital letters preceded with a 
-backslash character.
+NOTE: +rsrc_load+ erwartet den Dateinamen in Grossbuchstaben, mit einem
+Backslash-Zeichen vorangestellt.
 
-=== Responding to Menu Events
 
-Menu events are passed to our program using the +MN_SELECTED+ event type.
-+msg_buf[4]+ contains the reference to the actual menu selected.  These 
-references are defined in the .rsh file.
+=== Auf Menü-Events reagieren
 
-Within the +event_loop+ function switch function, we add the following case
-to respond to menu events:
+Menü-Events werden an unser Programm gereicht mit dem Typ +MN_SELECTED+.
++msg_buf[4]+ enthält die Referenz zum effektiv selektierten Menüpunkt.
+Diese Referenzen sind definiert in der .rsh Datei.
+
+Innerhalb des switch-Statements in der +event_loop+ Funktion fügen wir den
+folgenden case hinzu, um auf Menü-Events zu reagieren:
 
 [source,c]
 ----
-	case MN_SELECTED: /* menu selection */
+	case MN_SELECTED: /* menu ausgewaehlt */
         	do_menu (wd, msg_buf[4]); 			// <1>
 		/* return menu to normal */
         	menu_tnormal (menu_addr, msg_buf[3], true);	// <2>
 		break;
 ----
-<1> Call out to +do_menu+ with the selected menu item.
-<2> Once the menu event has been dealt with, return the menu display to normal.
+<1> Aufruf von +do_menu+ mit dem selektierten Menü-Punkt.
+<2> Sobald der Menü-Event abgehandelt worden ist, wird die Menü-Anzeige wieder
+    in den Normalzustand versetzt.
 
-Notice how GEM highlights the selected menu item whilst the event is carried 
-out.  Our program is responsible for returning the item to normal once it has 
-finished.
+Beachten Sie wie GEM den selektierten Menü-Eintrag hervorhebt während der Event
+bearbeitet wird. Unser Programm ist dafür verantwortlich, den Menü-Punkt wieder
+in den Normalzustand zu versetzen, sobald es fertig ist.
 
-The +do_menu+ function simply dispatches to a function to deal with each 
-of the possible menu items.
+Die +do_menu+ Funktion leitet die Verarbeitung einfach an eine andere Funktion
+weiter für jeden möglichen Menü-Punkt.
 
 [source,c]
 ----
@@ -1857,42 +1859,41 @@ void do_menu (struct win_data * wd, int menu_item) {
 	}
 }
 ----
-<1> The case statement uses the name for the menu item as defined in the 
-    RSC file.
+<1> Das case Statement benutzt den Namen des Menü-Punktes wie er in der RSC-Datei
+    definiert ist.
 
-The +do_about+ function displays a simple information dialog - we discuss 
-dialogs in a later section.
+Die +do_about+ Funktion zeigt einen simplen Informations-Dialog - wir besprechen
+Dialoge in einem späteren Abschnitt.
 
-How about the QUIT option?  When the user selects quit, we don't have to 
-do anything except exit the event loop.  This is easily done in the +while+ 
-condition:
+Und was ist mit der QUIT-Option? Wenn der Benutzer "Quit" (Beenden) anwählt,
+brauchen wir nichts weiter zu tun als den Event-Loop zu verlassen. Dies kann
+einfach gelöst werden in der +while+-Bedingung:
 
 [source,c]
 ----
 	} while (!(msg_buf[0] == MN_SELECTED && msg_buf[4] == MAIN_MENU_QUIT)); // <1>
 ----
-<1> Loop terminates when it has a +MN_SELECTED+ event which is 'Quit'.
+<1> Der Loop wird beendet sobald es einen +MN_SELECTED+ Event gibt vom Typ "QUIT".
 
-=== Controlling the Menu Items
+=== Menü-Punkte kontrollieren
 
-An individual menu item can be enabled or disabled.  A disabled menu item 
-cannot be selected, and is shown greyed out on the menu bar.  Whether a 
-menu item is enabled or not is controlled using:
+Ein einzelner Menü-Punkt kann ein- oder ausgeschaltet werden. Ein ausgeschalteter
+Menü-Punkt kann nicht angewählt werden, und wird ausgegraut im Menü angezeigt. Ob
+ein Menü-Punkt aktiv ist oder nicht, wird kontrolliert mit:
 
 [source,c]
 ----
 menu_ienable (menu_addr, OBJECT, flag);
 ----
 
-where
+wobei
 
-* +menu_addr+ is the address of the menu;
-* +OBJECT+ is the reference to the menu item; and
-* +flag+ is true to enable or false to disable the menu item.
+* +menu_addr+ die Adresse des Menüs ist;
+* +OBJECT+ die Referenz auf den Menü-Punkt ist; und
+* +flag+ "true" ist um den Punkt einzuschalten, oder "false" um ihn zu deaktivieren.
 
-Each menu item can also show an optional check (or 'tick') mark 
-beside it.  The code to control this takes the same parameters as 
-+menu_ienable+:
+Jeder Menü-Punkt kann auch optional ein Häckchen anzeigen neben dem Text-Label.
+Der Code um dies zu kontrollieren benutzt dieselben Parameter wie +menu_ienable+:
 
 [source,c]
 ----
