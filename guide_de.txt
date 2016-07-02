@@ -1521,42 +1521,43 @@ Die oberen zwei Fuktionen werden vier mal wiederholt, für die vier verschiedene
 Bewegungs-Richtungen. Schauen Sie sich den Quellcode an für alle die Varianten,
 und auch für +do_arrow+.
 
-=== Sample Program: Version 5
+=== Beispiel Programm: Version 5
 
-This version includes all the functions required for handling the sliders.  As
-can be seen by comparing versions 4 and 5, the code for the sliders dominates
-the final program: version 4 has approximately 240 lines of code, whereas 
-version 5 has around 550 lines, more than double the size. 
+Diese Version beinhaltet alle die für die Behandlung der Schieber notwendigen Funktionen.
+Wie man beim Vergleich von Version 4 und 5 sieht, dominiert der Code für die Schieber
+das finale Programm: Version 4 hat ungefähr 240 Zeilen Code, wogegen Version 5 in etwa
+550 Zeilen besitzt; mehr als doppelt so viele.
 
 
-== Multi-Window Programming
+== Multi-Fenster Programmierung
 
-So far, we have managed the display of a single window.  Managing more than one 
-window is not much different and, thanks to the structure we've used above, 
-requires relatively few changes to the earlier code.  
+Bis jetzt haben wir den Umgang mit einem einzelnen Fenster angeschaut. Die Nutzung
+von mehreren Fenstern unterscheidet sich nicht gross, und dank der Struktur die wir
+oben benutzt haben, brauchen wir dafür auch relativ wenige Anpassungen im Code.
 
-=== The Window List
+=== Die Fenster-Liste
 
-The critical change is to make the +win_data+ structure a _list_ of instances 
-of such structures.  We achieve this by adding a single field to +win_data+, 
-which is a pointer to the next window in the list:
+Die zentrale Änderung hier ist, dass wir aus der +win_data+ Struktur eine _Liste_
+von Instanzen von solchen Strukturen machen. Wir erreichen dies, indem wir ein
+zusätzliches einzelnes Feld zu +win_data+ hinzufügen, welches ein Zeiger ist auf
+das nächste Fenster in der Liste:
 
 [source,c]
 ----
 struct win_data {
-	int handle;	/* identifying handle of the window */
+	int handle;	/* Handle der das Fenster identifiziert */
 	
-	/* OTHER SLOTS */
+	/* ANDERE FELDER */
 	
-	struct win_data * next; /* pointer to next item in list   <1> */
+	struct win_data * next; /* Zeiger zum nächsten Listen-Element   <1> */
 };
 ----
-<1> The added slot provides a pointer to the next item in the list.
+<1> Das zusätzliche Feld enthält einen Zeiger auf das nächste Element in der Liste.
 
-As we create each window, we add its pointer to the end of the current window 
-list.  In our example I create the three windows inside +start_program+; for 
-a larger program, you may want to put this in a separate window-creation 
-function.
+Während wir alle die Fenster erzeugen, addieren wir ihre Zeiger zum Ende der
+aktuellen Fenster-Liste. In unserem Beispiel erzeuge ich drei Feinster in
++start_program+: Für ein grösseres Programm wäre es vermutlich sinnvoll, dies
+in eine separate Fenster-Erzeugungs-Funktion auszulagern.
 
 [source,c]
 ----
@@ -1566,10 +1567,10 @@ void start_program (void) {
 	struct win_data wd3;
 	int dum, fullx, fully, fullw, fullh;
 
-	graf_mouse (ARROW, 0L); /* ensure mouse is an arrow */
+	graf_mouse (ARROW, 0L); /* stellt sicher, dass die Maus ein Pfeil ist */
 	wind_get (0, WF_WORKXYWH, &fullx, &fully, &fullw, &fullh);
 
-	/* 1. set up and open our first window */
+	/* 1. Das erste Fenster vorbereiten und öffnen */
 	wd1.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
 	wind_set (wd1.handle, WF_NAME, "Example: Version 6 - Blake", 0, 0);
 	wind_open (wd1.handle, fullx, fully, 300, 200);
@@ -1580,7 +1581,7 @@ void start_program (void) {
 	wd1.vert_posn = 0;
 	vst_point (app_handle, 11, &dum, &dum, &wd1.cell_w, &wd1.cell_h);
 
-	/* set up and open our second window */
+	/* Das zweite Fenster vorbereiten und öffnen */
 	wd2.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
 	wind_set (wd2.handle, WF_NAME, "Example: Version 6 - Keats", 0, 0);
 	wind_open (wd2.handle, fullx, fully, 300, 200);
@@ -1595,23 +1596,23 @@ void start_program (void) {
 	wd3.vert_posn = 0;
 	vst_point (app_handle, 11, &dum, &dum, &wd3.cell_w, &wd3.cell_h);
 
-	/* add second window to end of list */
+	/* das zweite Fenster zum Ende der Liste addieren */
 	wd1.next = &wd2;				// <1>	
 	
-	/* set up and open our third window */
+	/* Das dritte Fenster vorbereiten und öffnen */
 	wd3.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
 	wind_set (wd3.handle, WF_NAME, "Example: Version 6 - Wordsworth", 0, 0);
 	wind_open (wd3.handle, fullx, fully, 300, 200);
 	wd3.poem = poem3;
 	wd3.next = NULL;
 	
-	/* add second window to end of list */
+	/* das dritte Fenster zum Ende der Liste addieren */
 	wd1.next->next = &wd3;				// <2>
 
-	/* 2. process events for our window */
+	/* 2. Evens für unser Fenster verarbeiten */
 	event_loop (&wd1);
 
-	/* 3. close and remove our windows */
+	/* 3. Unsere Fenster schliessen und entfernen */
 	wind_close (wd1.handle);
 	wind_delete (wd1.handle);
 	wind_close (wd2.handle);
@@ -1620,15 +1621,15 @@ void start_program (void) {
 	wind_delete (wd3.handle);
 }
 ----
-<1> Use +wd1+ as the head of the list, so attach +wd2+ to it.
-<2> Attach +wd3+ as the third element of the list, beginning with +wd1+.
+<1> Benutzt +wd1+ als das erste Listen-Element, also wird +wd2+ daran angehängt.
+<2> Hängt +wd3+ als das dritte Element an der Liste an, die mit +wd1+ beginnt.
 
-We still pass the start of the list of windows to +event_loop+.  However now,
-because each event could apply to any one of our windows, we must find the
-correct instance of +win_data+ for each event.  This is done in its own
-function, by looking for the window's handle.  The following function simply
-walks along the list of +win_data+ instances, until it finds the one with a
-handle matching the target handle:
+Wir übergeben nach wie vor den Beginn der Fenster-Liste an den +event_loop+.
+Da jetzt aber jeder Event irgendeinem unserer Fenster zugeordnet sein kann,
+müssen wir die richtige Instanz von +win_data+ für jeden Event finden. Dies
+geschieht in einer eigenen Funktion, mit Hilfe des Fenster-Handles. Die folgende
+Funktion geht durch die Liste von +win_data+ Instanzen bis sie eine findet,
+deren Fenster-Handle übereinstimmt mit dem Handle des Event-Ziel-Fensters:
 
 [source,c]
 ----
@@ -1640,9 +1641,9 @@ struct win_data * get_win_data (struct win_data * wd, int handle) {
 	return wd;
 }
 ----
-<1> Repeat the search until the end of the list.
-<2> When the current handle matches the target handle, end the search.
-<3> Move on to the next window in the list.
+<1> Wiederholt die Suche bis zum Ende der Liste.
+<2> Beende die Suche wenn der aktuelle Handle dem Ziel-Handle entspricht.
+<3> Geht weiter zum nächsten Fenster in der Liste.
 
 Finally, each event which requires an instance of +win_data+ must first find 
 the correct +win_data+ based on the window handle which triggered the event.
