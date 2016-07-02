@@ -1424,19 +1424,20 @@ case WM_ARROWED:
     Pfeile benutzt werden.
 <2> Aufruf des Pfeil-Handling Codes, mit dem Pfeil-Typ als Parameter.
 
-+do_arrow+ simply calls the appropriate function based on the arrow type.
++do_arrow+ ruft einfach die passende Funktion auf, basierend auf dem Pfeil-Typ.
 
-There are 8 arrow types.  In each slider we can move in either direction by one
-step, or by a "page".  The horizontal slider arrow events are handled identically
-to the vertical ones, except with the obvious change in orientation.  For the 
-vertical slider, the move up or move down is again the same, except for minor 
-changes.  I shall describe here just the UPLINE event, which moves the window 
-down by a single step, and the UPPAGE event, which moves the window down by a 
-whole page of text.  We start with UPPAGE, which is simpler:
+Es gibt 8 Pfeil-Typen. Jeder Schieber kann entweder ein "Schritt" oder eine "Seite"
+in jede Richtung bewegt werden. Die Events für die Pfeile des horizontalen Schiebers
+werden auf dieselbe Art behandelt wie die für den vertikalen, abgesehen vom offensichtlichen
+Unterschied bei der Ausrichtung. Für den vertikalen Schieber sind die auf- und abwärts
+Bewegung wieder dasselbe, abgesehen von kleinen Unterschieden. Ich werde hier nur den
+UPLINE Event beschreiben, welcher den Fenster-Inhalt um einen einzelnen Schritt nach
+unten bewegt, sowie den UPPAGE Event, welcher den Inhalt um eine ganze Text-Seite
+nach unten verschiebt. Wir beginnen mit UPPAGE, dem einfacheren der beiden:
 
 [source,c]
 ----
-/* This function is called in response to WA_UPPAGE arrow type */
+/* Diese Funktion wird aufgerufen als Reaktion auf den WA_UPPAGE Pfeil-Typ */
 void do_uppage (struct win_data * wd) {
 	GRECT r;
 	int lines_avail;
@@ -1448,35 +1449,36 @@ void do_uppage (struct win_data * wd) {
 	do_redraw (wd, &r);				// <4>
 }
 ----
-<1> Compute the amount of text available on the screen in the vertical direction.
-<2> Alter the vertical position by a screenful of text.
-<3> Check we have not gone too far: 0 is the top.
-<4> Redraw the window contents.
+<1> Berechnet die Menge an verfügbarem Text auf dem Screen in der Vertikalen.
+<2> Verändert die vertikale Position um die Text-Menge, die auf dem Screen Platz hat.
+<3> Prüft, dass wir nicht zu weit gegangen sind: 0 ist der obere Rand.
+<4> Zeichne den Fenster-Inhalt neu.
 
-We could, in theory, treat UPLINE in an identical manner.  Instead of changing 
-+wd->vert_posn+ by a page of text, we would change it by 1.  The only 
-aesthetic problem is that it makes the display flicker: there is a
-better technique, which gives smooth scrolling.  The better technique _copies_ 
-the unchanged, existing image down by one line, and then simply redraws the new 
-exposed line.
+Theoretisch könnten wir UPLINE gleich behandeln. Statt +wd->vert_posn+ um eine
+Text-Seite zu verändern, können wir es nur um 1 verändern. Das einzige ästhetische
+Problem damit ist, dass dadurch die Anzeige flackert: Es gibt eine bessere
+Technik, die uns weiches Scrolling erlaubt. Diese bessere Technik _kopiert_
+den unverändert sichtbaren Teil als Bild um eine Zeile nach unten, und zeichnet
+dann nur die neu sichtbare Zeile neu.
 
-The following function uses this better technique.  The first four lines
-compute the new +vert_posn+ in the same way as for +do_uppage+.  We then 
-set up a call to +vro_cpyfm+.  This VDI function copies screen data from 
-one place to another.  In pxy[0-3] we place the location of the start 
-display, and in pxy[4-7] we place the location of the end display, which 
-is the same location but one line down. Finally, we adjust the rectangle 
-so we redraw just the top, exposed parts of the display.
+Die folgende Funktion benutzt diese bessere Technik. Die ersten vier Zeilen
+berechnen den neuen Wert von +vert_posn+ in der gleichen Art und Weise wie
+für +do_uppage+. Danach bereiten wir einen Aufruf von +vro_cpyfm+ vor. Diese
+VDI-Funktion kopiert Screen-Daten von einer Position zur andern. In pxy[0-3]
+legen wir die Lokation des Start-Bereichs ab, und in pxy[4-7] die des Ziel-Bereichs
+unserer Kopier-Aktion. Dieser Ziel-Bereich hat die gleiche Position, nur um 1
+Text-Zeile nach unten verschoben. Zum Schluss passen wir das Rechteck so an,
+dass wir nur den oberen, neu enthüllten Teil des Displays neu zeichnen.
 
 [source,c]
 ----
-/* This function is called in response to WA_UPLINE arrow type */
+/* Diese Funktion wird aufgerufen als Reaktion auf WA_UPLINE Pfeil-Typ */
 void do_upline (struct win_data * wd) {
 	FDB s, d;
 	GRECT r;
 	int pxy[8];
 
-	if (wd->vert_posn == 0) return; /* already at top of screen  <1> */
+	if (wd->vert_posn == 0) return; /* bereits am oberen Rand  <1> */
 	wind_get (wd->handle, WF_WORKXYWH, &r.g_x, &r.g_y, &r.g_w, &r.g_h);
 	wd->vert_posn -= 1;
 	if (wd->vert_posn < 0) wd->vert_posn = 0;
@@ -1498,26 +1500,26 @@ void do_upline (struct win_data * wd) {
 	graf_mouse (M_ON, 0L);				// <8>
 	set_clip (false, r);
 	
-	r.g_h = 2*wd->cell_h; /* draw the height of two rows at top <9> */
+	r.g_h = 2*wd->cell_h; /* zeichne die Höhe von zwei Zeilen am oberen Rand <9> */
 	do_redraw (wd, &r);				// <10>
 }
 ----
-<1> If we are already at the top of the screen, there is nothing to do, 
-    so return.
-<2> The copy affects the screen, so set a clip region to our window, and 
-    disable the mouse.
-<3> Top left of work area.
-<4> Bottom right of work area, less one row.
-<5> New top left area, which is original top left down one row.
-<6> Bottom right or work area.
-<7> Perform the move on the screen.
-<8> Enable the mouse, and remove the clip region.
-<9> Constrain the redraw to the top two rows.
-<10> Redraw the exposed display area.
+<1> Wenn wir schon am oberen Rand des Screens sind, gibt es nichts zu tun,
+    und wir können die Funktion beenden.
+<2> Der Kopiervorgang wirkt sich auf den Screen aus, weshalb wir den
+    Clipping-Bereich auf unser Fenster legen, sowie die Maus ausschalten müssen.
+<3> Obere linke Ecke des Start-Bereichs.
+<4> Untere rechte Ecke des Start-Bereichs, minus eine Reihe.
+<5> Obere linke Ecke des Ziel-Bereichs, entspricht dem originalen, um eine Zeile nach unten verschoben.
+<6> Untere rechte Ecke des Ziel-Bereichts.
+<7> Führt die Kopier-Operation auf dem Screen aus.
+<8> Schaltet die Maus ein und deaktiviert den Clipping-Bereich.
+<9> Beschränkt das Neuzeichnen auf die obersten zwei Reihen.
+<10> Zeichnet den neu enthüllten Display-Bereich neu.
 
-The above two functions are repeated four times, for the four different 
-directions of movement.  See the source code for all the variations, and 
-also +do_arrow+.
+Die oberen zwei Fuktionen werden vier mal wiederholt, für die vier verschiedenen
+Bewegungs-Richtungen. Schauen Sie sich den Quellcode an für alle die Varianten,
+und auch für +do_arrow+.
 
 === Sample Program: Version 5
 
