@@ -283,7 +283,7 @@ void main (int argc, char ** argv) {
 <2> Diese Funktion müssen wir bereitstellen, und sie wird benutzt um einen
     "workspace" für unser Programm zu erstellen und zu öffnen, und den
     Applikations-Handle zu speichern.
-<3> Diese Funktion stellen wird bereit, hier wird unser Programm ausgeführt.
+<3> Diese Funktion stellen wir bereit, hier wird unser Programm ausgeführt.
 <4> Nachdem unser Programm beendet wurde, werden Resourcen freigegeben.
 <5> Mittels des Applikations-Handles von (2) wird der "workspace" geschlossen.
 <6> Und schliesslich wird die Applikation beendet.
@@ -449,7 +449,7 @@ void draw_example (int app_handle, struct win_data * wd) {
 
 }
 ----
-<1> Zeit Text an der gegebenen Koordinate auf dem Screen an. Wichtig:
+<1> Zeigt Text an der gegebenen Koordinate auf dem Screen an. Wichtig:
     Wir benutzen +app_handle+, welches den Screen referenziert, wenn
     wir VDI Funktionen aufrufen.
 
