@@ -1970,167 +1970,175 @@ Performance als weiteren Vorteil. Wir werden beide Optionen anschauen.
 
 ==== Traditionell mit event_multi
 
-
-The traditional +event_multi+ function is an extension of the +event_mesag+ 
-we have been using so far.  It offers the advantage of being documented in 
-the Atari literature, and will be familiar to most programmers.  However, 
-it does require care in defining and presenting different reference variables 
-to hold various return values.
+Die traditionelle +event_multi+ Funktion ist eine Erweiterung der +event_mesage+
+Funktion, die wir bisher benutzt haben. Sie bietet den Vorteil in der Atari
+Literatur dokumentiert zu sein, und die meisten Programmierer sind damit
+vertraut. Sie benötigt aber einige Aufmerksamkeit und Vorsicht bei der
+Definition und Nutzung verschiedener Referenz-Variablen, die für die Speicherung
+von Rückgabewerten gebraucht werden.
 
 
 ==== AHCC EvntMulti
 
-AHCC's custom +EvntMulti+ offers the advantage of a simpler calling routine.
-Instead of defining separate variables for the possible return values, we 
-simply define one instance of +EVENT+, and pass its address to +EvntMulti+.
-The return values and the +msgbuf+ are all then stored within our instance 
-of +EVENT+.  (The only small downside is that the slot names are not so 
-intuitive.)
+AHCC's eigene +EvntMulti+ Funktion bietet den Vorteil einer einfacher aufzurufenden
+Routine. Anstatt separate Variablen zu definieren für die verschiedenen möglichen
+Rückgabewerte definieren wir einfach eine Instanz von +EVENT+, und übergeben deren
+Adresse an +EvntMulti+. Die Rückgabewerte und +msgbuf+ werden dann alle innerhalb
+unserer +EVENT+ Instanz gespeichert (der einzige kleine Nachteil ist dass die
+Feldnamen nicht so intuitiv sind).
 
 
-=== Sample Program: Version 7
+=== Beispiel Programm: Version 7
 
-In version 7 of the program, we include a menu.  The menu provides an 
-'about' dialog, a way to quit the program, and a menu to select which poem 
-to show.  
+In Version 7 des Programms implementieren wir ein Menü. Das Menü bietet einen
+"about" Dialog, eine Möglichkeit, das Programm zu beenden sowie ein Menü
+um zu wählen, welches Gedicht angezeigt wird.
 
-The menu was created in Resource Master, and saved into the RSC file.  The 
-C header was exported, creating the .rsh file.  The .rsh file is needed for 
-compiling, and the RSC file for running the program.
+Das Menü wurde in "Resource Master" erzeugt und in eine RSC-Datei gespeichert.
+Die C-Header wurden in die .rsh-Datei exportiert. Die .rsh-Datei wird für die
+Compilierung benötigt, und die .RSC-Datei zur Laufzeit.
 
-The 'Quit' option may be triggered via the menu or by keyboard, so this version
-uses multiple events in the event loop; two event loops are provided, one 
-for the traditional approach, and one using AHCC's custom one.  The 'About' 
-option displays a simple dialog box: this uses the built in +form_alert+ call 
-to construct a dialog. I explain more about this and dialogs in general in a 
-later section.
+Die 'Quit'-Option zum Beenden des Programmes kann über den Menüpunkt oder über
+die Tastatur getriggert werden, weshalb diese Version mehrfache Events im
+Event-Loop benutzt; es werden zwei Event-Loops gezeigt, einer für die
+traditionelle Methode und einer für die AHCC-eigene Variante. Die 'About' Option
+zeigt einen einfachen Dialog an: Dieser benutzt die eingebaute +form_alert+
+Funktion um eine Dialogbox zu erzeugen. Ich werde mehr darüber und über Dialoge
+im allgemeinen in einem späteren Abschnitt erklären.
 
-Finally, this version allows us to open and close poems as we wish.  So the 
-window creation code has been changed to allow for a more dynamic set of 
-windows, and the window close code has been changed, to only close the selected
-window, not exit the program.  The program is only exited with the 'QUIT' 
-option.
-
-
-== Sokoban: A More Complex Example
-
-As a more complex example of multi-window programming, my Sokoban 
-implementation may be worth a look.  
-The source code is at https://github.com/petercrlane/sokoban
-
-If you review that source code, you will find many things similar to the 
-code in this document, however, some things will be different.  This 
-document was written, in part, to simplify and unify the code I have 
-for GEM handling in my programs, and I haven't put all the
-simplifications back.  Also, in a larger application, there are simply 
-more things to handle, which add a layer of complexity.
-
-In particular, note how I manage different window types: there is one 
-window showing a list of levels, and other windows showing the levels 
-in the game.  I have a slot in +win_data+ called +window_type+, and this 
-is set to +LEVELS+ or +POSITION+ when the window is created.  Within 
-+draw_interior+ I now switch to the appropriate calling code, depending 
-on the window type.
-
-Additionally, in some situations, such as when a move is made, not all 
-of the window needs to be redrawn.  I also have a flag for the type of 
-update: when a move is made, this flag is +MOVE+.  The drawing code for 
-the position will then only update the parts of the window related to that 
-last move.  Such refinements are necessary to prevent your application 
-flickering too much, due to constant updates.
-
-Sokoban also provides an example of +evnt_multi+, as the program responds 
-to window events, as above, but also mouse and keyboard events.  
+Und zu guter Letzt erlaubt uns diese Version, Gedichte ganz nach Wunsch zu
+öffnen und zu schliessen. Der Code zum erzeugen von Fenstern wurde daher
+erweitert, damit dynamischere Fenster möglich sind, und der Code zum Schliessen
+der Fenster wurde so angepasst dass nur das gewählte Fenster geschlossen wird,
+und nicht das ganze Programm beendet. Zum Beenden des Programmes dient jetzt
+nur noch die Menü-Option 'Quit'.
 
 
-== File Selectors
+== Sokoban: Ein komplexeres Beispiel
 
-In this section we look at the file selector dialog.  This is an important 
-and useful dialog, enabling the user to select a filename to save or open.
+Als ein komplexeres Beispiel von Multi-Fenster Programmierung mag meine
+Sokoban-Umsetzung einen Blick wert sein. Der Quellcode ist auf
+https://github.com/petercrlane/sokoban
 
-=== Sample Program: Version 8
+Wenn Sie den Code anschauen werden Sie feststellen, dass viele Dinge
+ähnlich sind zum Code in diesem Dokument, doch es gibt auch einige
+Unterschiede. Dieses Dokument wurde zum Teil geschrieben um den Code,
+den ich in meinen GEM Programmen nutze, zu vereinfachen und vereinheitlichen,
+und ich habe nicht alles zurückfliessen lassen. Ausserdem gibt es in einer
+grösseren Applikation einfach mehr Dinge zu berücksichtigen, was zu einer
+zusätzlichen Komplexitäts-Ebene führt.
 
-Version 8 of the program now includes options to save or open a file stored 
-on disk as a text file.  
+Beachten Sie insbesondere, wie ich die verschiedenen Fenster-Typen behandle:
+Es gibt ein Fenster welches eine Liste von Levels anzeigt, und andere
+Fenster die die Spiel-Level anzeigen. Ich habe ein Feld in +win_data+
+namens +window_type+, und dieses ist auf +LEVELS+ oder +POSITION+ gesetzt
+wenn das Fenster erzeugt wird. Innerhalb von +draw_interior+ springe ich
+dann zum korrespondierenden Code, abhängig vom Fenster-Typ.
+
+Ausserdem gibt es Situationen in denen nicht alle Fenster neu gezeichnet
+werden müssen, etwa wenn der Spieler einen Zug macht. Ich habe auch ein
+Flag für den Art des benötigten Updates: Wenn ein Zug gemacht wird, ist
+das Flag +MOVE+. Der Zeichnungs-Code für die Position will dann nur den
+Teil des Fensters aktualisieren der mit dem letzten Zug zusammenhängt.
+Solche Verfeinerungen sind nötig um zu verhindern dass Ihre Applikation
+zu sehr flackert wegen konstanter Aktualisierungen.
+
+Sokoban zeigt auch ein Beispiel für +evnt_multi+, da das Programm sowohl
+auf Fenster-Events reagiert als auch auf Maus- und Tastatur-Events.
 
 
-== Dialogs
+== File Auswahl
 
-something about dialogs
+In diesem Abschnitt schauen wir uns den File-Auswahl-Dialog an. Dies ist
+ein wichtiger und nützlicher Dialog, der dem Benutzer erlaubt, einen
+Dateinamen zu wählen um etwas zu laden oder zu speichern.
+
+=== Beispiel Programm: Version 8
+
+Version 8 des Programms enthält jetzt Optionen um eine Datei zu speichern
+oder eine auf Disk gespeicherte Textdatei zu öffnen.
+
+
+== Dialoge
+
+etwas über Dialoge
 
 === Form Alerts
 
-built in dialogs
+eingebaute Dialoge
 
-=== Through RSC
+=== Mittels RSC
 
-boxes you build yourself
+selbstdefinierte Dialogboxen
 
-=== Sample Program: Temperature Converter
+=== Beispiel Program: Temperatur-Konverter
 
-This sample program is a standalone program.  It provides a simple 
-dialog which converts temperatures from fahrenheit to celsius.  It 
-illustrates how to access information in text fields, and how to 
-respond to button clicks.
+Dieses Beispiel-Programm ist ein separates, eigenständiges Programm.
+Es bietet einen einfachen Dialog welcher Temperaturen von Fahrenheit
+nach Celsius konvertiert. Es illustriert wie man auf Werte in
+Text-Eingabefeldern zugreift, und wie man auf angeklickte Buttons
+reagiert.
+
+Für ein Beispiel der Nutzung von Dialogen in einem grösseren Programm
+schauen Sie sich "BiFind" an. Diese Applikation enthält einen 'Find'
+Dialog, welcher einen Such-String ans aufrufende Programm zurückgibt.
+Der "BiFind" Quellcode ist verfügbar unter https://github.com/petercrlane/bibfind
 
 
-For an example of using dialogs within a larger program, the 
-BibFind program may be of interest.  This provides a 'Find' dialog 
-box, which returns a string to search to the calling program.
-BibFind source code is available at https://github.com/petercrlane/bibfind
+== Ausgewählte TOS 4.0 Funktionalität
 
+Bis hierher habe ich die GEM Programmierung auf einer Ebene diskutiert,
+die auf alle Atari GEM Plattformen zutrifft, vom Atari ST mit TOS 1.04
+bis zu mächtigen Klonen wie der FireBee mit Mint/XaAES. Die späteren
+Versionen von AES unterstützen jedoch zusätzliche Events und Funktionen,
+deren Verwendung in Ihrem Programm sinnvoll wäre, wenn Sie ihr Programm
+auch auf diesen mächtigeren Plattformen laufen lassen wollen.
 
-== Selected Features of TOS 4.0+
+TIP: Einige Funktionen können ausschliesslich mit bestimmten Varianten von
+AES benutzt werden, z.B. XaAES oder MyAES. Sie sollten die spezifische
+Dokumentation zu Ihrer Ziel-Plattform lesen bevor Sie etwas vom nachfolgenden
+benutzen. Ein Aufruf von +appl_getinfo+ kann innerhalb Ihres Programmes benutzt
+werden um festzustellen, welche Funktionalität zur Verfügung steht. Benutzen
+Sie toshyp als Referenz für weitere Details.
 
-So far, I have kept my treatment of GEM programming at a level which 
-would suit all Atari GEM platforms, from the Atari ST running 
-TOS 1.04 to powerful clones such as the Firebee running Mint/XaAES.  
-The later versions of AES do, however, support additional events and features 
-which are worth including in your programs, if you wish them to run on the 
-more powerful systems.  
+=== Zusätzliche Events
 
-TIP: Some of these features also only work with certain versions of AES, 
-e.g. XaAES or MyAES.  You should consult documentation specific to your 
-target platform before using any of the following.  A call to +appl_getinfo+ 
-can be used within your program to determine what features are available.
-Refer to toshyp for further details.
+Diese Liste ist eine sehr unvollständige Zusammenfassung einiger Events, die
+ich in meinen GEM-Programmen zu verwenden angefangen habe:
 
-=== Additional Events
+1. Shading: "Shading" meint die Funktion, bei der das Fenster auf seine
+   Titelleiste zusammengeklappt wird. Auf Mint/XaAES wird dies erreicht
+   durch Rechts- oder Doppelklick auf die Titelleiste. Wenn das Fenster
+   "shaded", also zusammengeklappt, ist, sollte es sich nicht neu Zeichnen
+   oder auf Tastatur-Events reagieren. Ein Weg, dies zu erreichen, ist:
 
-This list is a very incomplete summary of some events I have started 
-including in my GEM programs:
+** ein Flag +shaded+ in +win_data+ enthalten
+** wird dieses Flag auf true gesetzt wenn die Message +WM_SHADED+ erhalten wird
+** wird dieses Flag auf false gesetzt wenn die Message +WM_UNSHADED+ erhalten wird
+** in +draw_interior+ nichts gemacht wenn +wd->shaded+ auf true ist
 
-1. Shading: Shading is where the window is collapsed into its title bar.
-   On Mint/XaAES this is achieved by right- or double-clicking the title
-   bar.  When shaded, windows should not redraw themselves or respond to 
-   keyboard events.  One way to handle this is to:
-   
-** include a flag +shaded+ in +win_data+
-** set this flag to true when receiving the message +WM_SHADED+
-** set this flag to false when receiving the message +WM_UNSHADED+
-** in +draw_interior+, simply return if +wd->shaded+ is true, before drawing anything
-   
-2. AP_TERM: this message is sent to tell your application to quit.  You 
-   can handle this in the event loop, by checking that +msg_buf[3] != AP_TERM+
-   in the condition of the do-while loop.
-   
-3. WM_ONTOP: If another window is closed which leaves your window on top, this 
-   message is sent to your application.  This is useful in circumstances when 
-   you want to update some displayed information based on the current top 
-   window.  (Sokoban uses this to update enabled menu items for the current
-   top window.)
+2. AP_TERM: Diese Message wird geschickt um Ihrer Applikation mitzuteilen, dass
+   sie sich beenden soll. Sie können dies in Ihrem Event-Loop abhandeln indem
+   Sie prüfen ob +msg_buf[3] != AP_TERM+ ist (in der Bedingung der do-while Schleife).
 
-4. WM_BOTTOMED: A single click on the window title in Mint/XaAES sends 
-   the window back in the window list.  To support this, include the following 
-   code in event loop, within the switch statement of message types:
-   
+3. WM_ONTOP: Falls ein anderes Fenster geschlossen wird, so dass nun Ihr Fenster im
+   Vordergrund ist, wird diese Message an Ihre Applikation geschickt. Dies ist dann
+   nützlich wenn Sie gewisse angezeigte Informationen aktualisieren wollen abhängig
+   vom obersten Fenster (Sokoban benutzt dies um seine aktiven Menü-Punkte anzupassen
+   fürs aktuelle oberste Fenster).
+
+4. WM_BOTTOMED: Ein einzelner Klick auf den Fenster-Titel schickt das Fenster in
+   den Hintergrund (also hinter alle anderen Fenster) auf Mint/XaAES. Um dies
+   zu unterstützen müssen Sie den folgenden Code im Event-Loop einbauen, innerhalb
+   des switch-Statements der Message-Typen:
+
 [source,c]
 ----
 case WM_BOTTOMED:
 	wind_set (msg_buf[3], WF_BOTTOM, 0, 0, 0, 0); // <1>
 	break;
 ----
-<1> Set the given window handle to the bottom.
+<1> Setzt das Fenster mit dem gegebenen Handle in den Hintergrund.
 
 === Toolbars
 
