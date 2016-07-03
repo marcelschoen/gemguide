@@ -8,7 +8,7 @@ a2x --verbose -a encoding=utf-8 -f pdf --dblatex-opts "-P latex.encoding=utf8 -P
 pdftk guide_de.pdf cat 2-end output temp.pdf
 
 # Add the separate title page
-pdftk guide_de-title.pdf temp.pdf cat output guide_de.pdf
+pdftk guide-title_de.pdf temp.pdf cat output guide_de.pdf
 
 # Tidy up
 rm temp.pdf
