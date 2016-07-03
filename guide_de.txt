@@ -1,11 +1,11 @@
-= GEM Guide für AHCC
+= GEM Programmierung mit AHCC
 
-== Einführung
+== Vorwort
 
 Dieses Dokument ist eine Anleitung zum schreiben von GEM Applikationen
 in C mit AHCC. Sie enthält die detaillierten einzelnen Schritte zur
 Implementation einer Beispiel GEM Anwendung. Das Beispiel-Programm
-beginn zuerst mit einem einzelnen Fenster mit etwas Text. Dann erweitern wir
+beginnt zuerst mit einem einzelnen Fenster mit etwas Text. Dann erweitern wir
 das Programm über mehrere Versionen hinweg, um mehrere Fenster mit
 Schiebern und anderen Fenster-Widgets zu erzeugen. Das Programm wird
 dann erweitert um Menüs, Datei-Dialoge und andere AES Features.
@@ -168,7 +168,7 @@ die Libraries in "include" verwendet. Öffnen Sie dazu den "Config" Dialog
 (Alt-O), suchen Sie "Options for the compiler" und setzen Sie die Checkbox
 für die Zeile "-i include".
 
-== Übersicht eines GEM Programmes
+== Eigenschaften eines GEM Programmes
 
 Wenn Sie vertraut sind mit GUI Programmierung auf modernen Computern, bitte
 vergessen Sie alles, was Sie wissen. Programmierung in GEM ist primitiv. Mit
@@ -236,7 +236,7 @@ Ein GEM Programm macht typischerweise das folgende:
 . Den VDI-Screen freigeben
 . Die Applikation beenden
 
-== Beginn: Ein Fenster öffnen
+== Beginn: Ein einfaches Fenster
 
 In dieser ersten Sektion sehen wir, wie man ein GEM Programm startet und
 das einfachste aller Fenster anzeigt. Dies entspricht dem "hello world"
@@ -312,7 +312,7 @@ void open_vwork (void) {
 <2> Erzeugen der Werte um eine virtuelle "workstation" zu deklarieren.
 <3> Schliesslich erzeugen der virtuellen "workstation" für unsere Applikation.
 
-=== Ein Fenster öffnen
+=== Ein Fenster anzeigen
 
 Jedes Fenster in unserer Applikation wird dem Benutzer irgendwelche Informationen
 anzeigen. Ein Fenster kann auf viele Events reagieren: Es kann auf dem Bildschirm
@@ -823,7 +823,7 @@ mit fixer Grösse reicht, haben Sie jetzt genug zusammen um eine GEM
 Applikation zu implementieren.
 
 
-== Fenster-Grösse ändern: FULL und RESIZE
+== Fenster-Dimensionen anpassen: FULL und RESIZE
 
 Die nächsten beiden Fenster-Elemente die wir anschauen werden benutzt, um die
 Grösse des Fensters zu ändern. Das erste, FULLER (Maximier-Box), erlaubt es,
@@ -865,7 +865,7 @@ etwa kann ich die Animationen nicht sehen.
 [source,c]
 ----
 void do_fulled (struct win_data * wd) {
-	if (is_full_window (wd)) { /* das Fenster ist schon maximiert, also zurück-schrumpfen */
+	if (is_full_window (wd)) { /* das Fenster ist schon maximiert, also zurueck-schrumpfen */
 		int oldx, oldy, oldw, oldh;
 		int fullx, fully, fullw, fullh;
 
@@ -1073,11 +1073,11 @@ struct win_data {
 	int handle; /* Fenster handle */
 
 	int lines_shown; /* Anzahl sichtbarer Zeilen im aktuellen Display */
-	int colns_shown; /* Anzahl sichtbarer Spalten im aktuellen Display (längste Zeile) */
+	int colns_shown; /* Anzahl sichtbarer Spalten im aktuellen Display (laengste Zeile) */
 	int vert_posn; /* Nummer der ersten sichtbaren Zeile */
 	int horz_posn; /* Nummer der ersten sichtbaren Spalte */
 
-	int cell_h; /* Höhe einer Zeichen-Zelle im Fenster */
+	int cell_h; /* Hoehe einer Zeichen-Zelle im Fenster */
 	int cell_w; /* Breite einer Zeichen-Zelle im Fenster */
 
 	/* VERBLEIBENDE FELDER NICHT ANGEZEIGT */
@@ -1107,9 +1107,9 @@ sichtbar sind (die vom Zeichnungs-Code angezeigt werden).
 int slider_size (int num_available, int num_shown) {
 	int result;
 
-	/* Falls die angezeigte Zahl kleiner ist als die verfügbare */
+	/* Falls die angezeigte Zahl kleiner ist als die verfuegbare */
 	if (num_available >= num_shown) { /* alle sichtbar		   <1> */
-		result = 1000; /* also Schieber vollständig */
+		result = 1000; /* also Schieber vollstaendig */
 	} else {
 		result = (1000 * (long)num_available) / num_shown;	// <2>
 	}
@@ -1142,9 +1142,9 @@ diese Werte mittels Integer-Division und Modulus, und kann überall verwendet we
 int slider_posn (int num_available, int num_shown, int offset) {
 	int result;
 
-	/* Falls die angezeigte Zahl kleiner ist als die verfügbare */
+	/* Falls die angezeigte Zahl kleiner ist als die verfuegbare */
 	if (num_available >= num_shown) { /* alles sichtbar */
-		result = 0; /* also Schieber vollständig, und an oberer Position */
+		result = 0; /* also Schieber vollstaendig, und an oberer Position */
 	} else {
 		/* Anzahl der Positionen entlang derer der Schieber bewegt werden kann: Muss positiv sein wg. vorherigem Check */
 		int scrollable_region = num_shown - num_available;
@@ -1308,22 +1308,22 @@ void do_sized (struct win_data * wd, int * msg_buf) {
 	if (msg_buf[7] < MIN_HEIGHT) msg_buf[7] = MIN_HEIGHT;
 
 	// <2>
-	new_height = (msg_buf[7] / wd->cell_h) + 1; /* Neue Höhe in Zeichen */
+	new_height = (msg_buf[7] / wd->cell_h) + 1; /* Neue Hoehe in Zeichen */
 	new_width = (msg_buf[6] / wd->cell_w) + 1;  /* Neue Breite in Zeichen */
 
-	/* Wenn die neue Höhe grösser ist als lines_shown - vert_posn,
-	   können wir vert_posn dekrementieren, um mehr Zeilen anzuzeigen. */
+	/* Wenn die neue Hoehe groesser ist als lines_shown - vert_posn,
+	   koennen wir vert_posn dekrementieren, um mehr Zeilen anzuzeigen. */
 	if (new_height > wd->lines_shown - wd->vert_posn) {	// <3>
 		wd->vert_posn -= new_height - (wd->lines_shown - wd->vert_posn);
 		if (wd->vert_posn < 0) wd->vert_posn = 0;
 		changed = true;					// <4>
 	}
-	/* Wenn die neue Höhe kleiner ist als lines_shown - vert_posn,
-	   belassen wir die vertikale Position unverändert, es muss
+	/* Wenn die neue Hoehe kleiner ist als lines_shown - vert_posn,
+	   belassen wir die vertikale Position unveraendert, es muss
 	   also nichts gemacht werden.                 <5> */
 
-	/* Ähnliches gilt, wenn die neue Breite grösser ist als colns_shown - horz_posn;
-	   in dem Falle können wir horz_posn dekrementieren um mehr Spalten anzuzeigen. */
+	/* Aehnliches gilt, wenn die neue Breite groesser ist als colns_shown - horz_posn;
+	   in dem Falle koennen wir horz_posn dekrementieren um mehr Spalten anzuzeigen. */
 	if (new_width > wd->colns_shown - wd->horz_posn) {	// <6>
 		wd->horz_posn -= new_width - (wd->colns_shown - wd->horz_posn);
 		if (wd->horz_posn < 0) wd->horz_posn = 0;
@@ -1500,7 +1500,7 @@ void do_upline (struct win_data * wd) {
 	graf_mouse (M_ON, 0L);				// <8>
 	set_clip (false, r);
 	
-	r.g_h = 2*wd->cell_h; /* zeichne die Höhe von zwei Zeilen am oberen Rand <9> */
+	r.g_h = 2*wd->cell_h; /* zeichne die Hoehe von zwei Zeilen am oberen Rand <9> */
 	do_redraw (wd, &r);				// <10>
 }
 ----
@@ -1549,7 +1549,7 @@ struct win_data {
 	
 	/* ANDERE FELDER */
 	
-	struct win_data * next; /* Zeiger zum nächsten Listen-Element   <1> */
+	struct win_data * next; /* Zeiger zum naechsten Listen-Element   <1> */
 };
 ----
 <1> Das zusätzliche Feld enthält einen Zeiger auf das nächste Element in der Liste.
@@ -1570,7 +1570,7 @@ void start_program (void) {
 	graf_mouse (ARROW, 0L); /* stellt sicher, dass die Maus ein Pfeil ist */
 	wind_get (0, WF_WORKXYWH, &fullx, &fully, &fullw, &fullh);
 
-	/* 1. Das erste Fenster vorbereiten und öffnen */
+	/* 1. Das erste Fenster vorbereiten und oeffnen */
 	wd1.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
 	wind_set (wd1.handle, WF_NAME, "Example: Version 6 - Blake", 0, 0);
 	wind_open (wd1.handle, fullx, fully, 300, 200);
@@ -1581,7 +1581,7 @@ void start_program (void) {
 	wd1.vert_posn = 0;
 	vst_point (app_handle, 11, &dum, &dum, &wd1.cell_w, &wd1.cell_h);
 
-	/* Das zweite Fenster vorbereiten und öffnen */
+	/* Das zweite Fenster vorbereiten und oeffnen */
 	wd2.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
 	wind_set (wd2.handle, WF_NAME, "Example: Version 6 - Keats", 0, 0);
 	wind_open (wd2.handle, fullx, fully, 300, 200);
@@ -1599,7 +1599,7 @@ void start_program (void) {
 	/* das zweite Fenster zum Ende der Liste addieren */
 	wd1.next = &wd2;				// <1>	
 	
-	/* Das dritte Fenster vorbereiten und öffnen */
+	/* Das dritte Fenster vorbereiten und oeffnen */
 	wd3.handle = wind_create (NAME|CLOSER|FULLER|MOVER|SIZER, fullx, fully, fullw, fullh);
 	wind_set (wd3.handle, WF_NAME, "Example: Version 6 - Wordsworth", 0, 0);
 	wind_open (wd3.handle, fullx, fully, 300, 200);
@@ -1609,7 +1609,7 @@ void start_program (void) {
 	/* das dritte Fenster zum Ende der Liste addieren */
 	wd1.next->next = &wd3;				// <2>
 
-	/* 2. Evens für unser Fenster verarbeiten */
+	/* 2. Events fuer unser Fenster verarbeiten */
 	event_loop (&wd1);
 
 	/* 3. Unsere Fenster schliessen und entfernen */
@@ -1700,7 +1700,7 @@ des Strings macht. Die Länge ist in GEM auf 80 Zeichen beschränkt (wobei die
 meisten AES Alternativen dieses Limit erweitern).
 
 
-== Menüs
+== Menu
 
 Der Menü-Balken ist ein praktischer Weg der Interaktion mit unserem Programm. Ein
 Menü-Balken wird in eineR RSC-Datei definiert, welche alle Ressourcen unseres
@@ -1773,7 +1773,7 @@ source code.  We do this by adding a line in "windows.h", for example:
 #include "version7.rsh"
 ----
 
-=== Ein Menü anzeigen
+=== Ein Menu anzeigen
 
 Bevor wir ein Menü anzeigen können muss unser Programm die .RSC-Datei öffnen.
 Wir müssen prüfen ob die Datei erfolgreich geöffnet wurde bevor wir weiterfahren.
@@ -1820,7 +1820,7 @@ NOTE: +rsrc_load+ erwartet den Dateinamen in Grossbuchstaben, mit einem
 Backslash-Zeichen vorangestellt.
 
 
-=== Auf Menü-Events reagieren
+=== Auf Menu-Events reagieren
 
 Menü-Events werden an unser Programm gereicht mit dem Typ +MN_SELECTED+.
 +msg_buf[4]+ enthält die Referenz zum effektiv selektierten Menüpunkt.
@@ -1875,7 +1875,7 @@ einfach gelöst werden in der +while+-Bedingung:
 ----
 <1> Der Loop wird beendet sobald es einen +MN_SELECTED+ Event gibt vom Typ "QUIT".
 
-=== Menü-Punkte kontrollieren
+=== Menu-Punkte kontrollieren
 
 Ein einzelner Menü-Punkt kann ein- oder ausgeschaltet werden. Ein ausgeschalteter
 Menü-Punkt kann nicht angewählt werden, und wird ausgegraut im Menü angezeigt. Ob
@@ -2085,7 +2085,7 @@ Dialog, welcher einen Such-String ans aufrufende Programm zurückgibt.
 Der "BiFind" Quellcode ist verfügbar unter https://github.com/petercrlane/bibfind
 
 
-== Ausgewählte TOS 4.0 Funktionalität
+== Spezielle TOS 4.0 Funktionen
 
 Bis hierher habe ich die GEM Programmierung auf einer Ebene diskutiert,
 die auf alle Atari GEM Plattformen zutrifft, vom Atari ST mit TOS 1.04
@@ -2101,7 +2101,7 @@ benutzen. Ein Aufruf von +appl_getinfo+ kann innerhalb Ihres Programmes benutzt
 werden um festzustellen, welche Funktionalität zur Verfügung steht. Benutzen
 Sie toshyp als Referenz für weitere Details.
 
-=== Zusätzliche Events
+=== Weitere Events
 
 Diese Liste ist eine sehr unvollständige Zusammenfassung einiger Events, die
 ich in meinen GEM-Programmen zu verwenden angefangen habe:
